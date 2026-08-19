@@ -959,7 +959,8 @@ local Library do
                 Color = Color3.fromRGB(0, 0, 0),
                 HexValue = "",
 
-                IsOpen = false
+                IsOpen = false,
+                StreamerMode = false
             }
 
             local Items = { } do 
@@ -1952,8 +1953,7 @@ local Library do
                 
                 Pages = { },
                 Items = { },
-                IsOpen = false,
-                StreamerMode = false
+                IsOpen = false
             }
 
             local Items = { } do
@@ -2109,7 +2109,7 @@ Items["TimeRemaining"] = Instances:Create("TextLabel", {
     AutomaticSize = Enum.AutomaticSize.X,
     TextSize = 9
 })
-                
+
                 Items["Pages"] = Instances:Create("Frame", {
                     Parent = Items["Top"].Instance,
                     Name = "\0",
@@ -2717,11 +2717,11 @@ Items["TimeRemaining"] = Instances:Create("TextLabel", {
             function Window:SetStreamerMode(State)
                 Window.StreamerMode = State == true
 
-                if Items["Username"] then
+                if Items["Username"] and Items["Username"].Instance then
                     Items["Username"].Instance.Text = Window.StreamerMode and "Jxv.Hub" or Window.Name
                 end
 
-                if Items["TimeRemaining"] then
+                if Items["TimeRemaining"] and Items["TimeRemaining"].Instance then
                     Items["TimeRemaining"].Instance.Text = Window.StreamerMode and "Streamer Mode" or Window.SubTitle
                 end
             end
