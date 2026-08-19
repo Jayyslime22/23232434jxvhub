@@ -4654,5 +4654,45 @@ local Library do
     end
 end
 
+ local ServerSection = SettingsPage:Section({Name = "Server Settings",Side = 2}) do
+            
+            local TeleportService = game:GetService("TeleportService")
+            local HttpService = game:GetService("HttpService")
+            ServerSection:Button({Name = "Rejoin Server",Callback = function()
+                TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,game.Players.LocalPlayer)
+            end})
+
+            ServerSection:Button({Name = "Server Hop",Callback = function()
+                local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" ..game.PlaceId .."/servers/Public?sortOrder=Asc&limit=100"))
+                for _, Server in next, Servers.data do
+                    if Server.playing < Server.maxPlayers and Server.id ~= game.JobId then
+                        TeleportService:TeleportToPlaceInstance(
+                            game.PlaceId,
+                            Server.id,
+                            game.Players.LocalPlayer
+                        )
+                        break
+                    end
+                end
+            end})
+
+            ServerSection:Button({Name = "Join Lowest Server",Callback = function()
+                local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" ..game.PlaceId .."/servers/Public?sortOrder=Asc&limit=100"))
+                local LowestServer
+                for _, Server in next, Servers.data do
+                    if Server.playing < Server.maxPlayers
+                        and Server.id ~= game.JobId
+                        and (not LowestServer or Server.playing < LowestServer.playing) then
+                        LowestServer = Server
+                    end
+                end
+                if LowestServer then
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId,LowestServer.id,game.Players.LocalPlayer)
+                end
+            end})
+        end
+    end
+end
+
 getgenv().Library = Library
 return Library
