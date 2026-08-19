@@ -2108,7 +2108,7 @@ Items["TimeRemaining"] = Instances:Create("TextLabel", {
     Position = UDim2New(0, 43, 0, 25),
     AutomaticSize = Enum.AutomaticSize.X,
     TextSize = 9
-}) Items["TimeRemaining"]:AddToTheme({TextColor3 = "SubText"})
+})
                 
                 Items["Pages"] = Instances:Create("Frame", {
                     Parent = Items["Top"].Instance,
