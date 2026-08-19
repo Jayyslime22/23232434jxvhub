@@ -2054,7 +2054,9 @@ local Library do
                     Position = UDim2New(0, 12, 0.5, 0),
                     Size = UDim2New(0, 26, 0, 26),
                     BorderSizePixel = 0,
-                    BackgroundColor3 = FromRGB(28, 17, 44)
+                    BackgroundColor3 = FromRGB(28, 17, 44),
+                    Visible = true,
+                    ZIndex = 20
                 })
 
                 Instances:Create("UICorner", {
@@ -2080,7 +2082,8 @@ local Library do
                     BorderSizePixel = 0,
                     Image = Window.Logo,
                     ScaleType = Enum.ScaleType.Fit,
-                    Visible = Window.Logo ~= ""
+                    Visible = Window.Logo ~= "",
+                    ZIndex = 21
                 })
 
                 Items["BrandLetter"] = Instances:Create("TextLabel", {
@@ -2092,7 +2095,8 @@ local Library do
                     TextColor3 = Library.Theme["Accent"],
                     FontFace = Library.Font,
                     TextSize = 11,
-                    Visible = Window.Logo == ""
+                    Visible = Window.Logo == "",
+                    ZIndex = 21
                 }) Items["BrandLetter"]:AddToTheme({TextColor3 = "Accent"})
 
                 Items["Username"] = Instances:Create("TextLabel", {
@@ -2107,7 +2111,9 @@ local Library do
                     BorderSizePixel = 0,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
-                    TextSize = 11
+                    TextSize = 11,
+                    Visible = true,
+                    ZIndex = 20
                 }) Items["Username"]:AddToTheme({TextColor3 = "Text"})
 
                 Items["TimeRemaining"] = Instances:Create("TextLabel", {
@@ -2123,7 +2129,9 @@ local Library do
                     Position = UDim2New(0, 48, 0, 24),
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
-                    TextSize = 9
+                    TextSize = 9,
+                    Visible = true,
+                    ZIndex = 20
                 })
 
                 Items["Pages"] = Instances:Create("Frame", {
@@ -2136,7 +2144,8 @@ local Library do
                     Size = UDim2New(0, 0, 1, 0),
                     BorderSizePixel = 0,
                     AutomaticSize = Enum.AutomaticSize.X,
-                    BackgroundColor3 = FromRGB(255, 255, 255)
+                    BackgroundColor3 = FromRGB(255, 255, 255),
+                    ZIndex = 5
                 })
                 
                 Instances:Create("UIPadding", {
@@ -2734,10 +2743,12 @@ local Library do
                 Window.StreamerMode = State == true
 
                 if Items["Username"] and Items["Username"].Instance then
+                    Items["Username"].Instance.Visible = true
                     Items["Username"].Instance.Text = Window.StreamerMode and "Jxv.Hub" or LocalPlayer.Name
                 end
 
                 if Items["TimeRemaining"] and Items["TimeRemaining"].Instance then
+                    Items["TimeRemaining"].Instance.Visible = true
                     Items["TimeRemaining"].Instance.Text = Window.StreamerMode and "Streamer Mode" or (Window.Name .. "  •  " .. Window.SubTitle)
                 end
             end
