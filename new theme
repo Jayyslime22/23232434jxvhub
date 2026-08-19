@@ -2047,37 +2047,28 @@ local Library do
                     Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(223, 223, 223))}
                 })
 
-               Items["BrandIcon"] = Instances:Create("Frame", {
+                Items["BrandGlow"] = Instances:Create("ImageLabel", {
                     Parent = Items["Top"].Instance,
                     Name = "\0",
                     AnchorPoint = Vector2New(0, 0.5),
-                    Position = UDim2New(0, 12, 0.5, 0),
-                    Size = UDim2New(0, 26, 0, 26),
+                    Position = UDim2New(0, 8, 0.5, 0),
+                    Size = UDim2New(0, 38, 0, 38),
+                    BackgroundTransparency = 1,
                     BorderSizePixel = 0,
-                    BackgroundColor3 = FromRGB(28, 17, 44),
-                    Visible = true,
-                    ZIndex = 20
-                })
-
-                Instances:Create("UICorner", {
-                    Parent = Items["BrandIcon"].Instance,
-                    Name = "\0",
-                    CornerRadius = UDimNew(0, 6)
-                })
-
-                Instances:Create("UIStroke", {
-                    Parent = Items["BrandIcon"].Instance,
-                    Name = "\0",
-                    Thickness = 1,
-                    Transparency = 0.15,
-                    Color = Library.Theme["Accent"]
-                }):AddToTheme({Color = "Accent"})
+                    Image = Window.Logo,
+                    ImageColor3 = Library.Theme["Accent"],
+                    ImageTransparency = 0.58,
+                    ScaleType = Enum.ScaleType.Fit,
+                    Visible = Window.Logo ~= "",
+                    ZIndex = 19
+                }) Items["BrandGlow"]:AddToTheme({ImageColor3 = "Accent"})
 
                 Items["BrandImage"] = Instances:Create("ImageLabel", {
-                    Parent = Items["BrandIcon"].Instance,
+                    Parent = Items["Top"].Instance,
                     Name = "\0",
-                    Position = UDim2New(0, 3, 0, 3),
-                    Size = UDim2New(1, -6, 1, -6),
+                    AnchorPoint = Vector2New(0, 0.5),
+                    Position = UDim2New(0, 10, 0.5, 0),
+                    Size = UDim2New(0, 34, 0, 34),
                     BackgroundTransparency = 1,
                     BorderSizePixel = 0,
                     Image = Window.Logo,
@@ -2087,14 +2078,16 @@ local Library do
                 })
 
                 Items["BrandLetter"] = Instances:Create("TextLabel", {
-                    Parent = Items["BrandIcon"].Instance,
+                    Parent = Items["Top"].Instance,
                     Name = "\0",
-                    Size = UDim2New(1, 0, 1, 0),
+                    AnchorPoint = Vector2New(0, 0.5),
+                    Position = UDim2New(0, 10, 0.5, 0),
+                    Size = UDim2New(0, 34, 0, 34),
                     BackgroundTransparency = 1,
                     Text = "J",
                     TextColor3 = Library.Theme["Accent"],
                     FontFace = Library.Font,
-                    TextSize = 11,
+                    TextSize = 18,
                     Visible = Window.Logo == "",
                     ZIndex = 21
                 }) Items["BrandLetter"]:AddToTheme({TextColor3 = "Accent"})
@@ -2107,7 +2100,7 @@ local Library do
                     Text = LocalPlayer.Name,
                     Size = UDim2New(0, 210, 0, 15),
                     BackgroundTransparency = 1,
-                    Position = UDim2New(0, 48, 0, 9),
+                    Position = UDim2New(0, 52, 0, 9),
                     BorderSizePixel = 0,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
@@ -2126,7 +2119,7 @@ local Library do
                     Size = UDim2New(0, 245, 0, 14),
                     BorderSizePixel = 0,
                     BackgroundTransparency = 1,
-                    Position = UDim2New(0, 48, 0, 24),
+                    Position = UDim2New(0, 52, 0, 24),
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
                     TextSize = 9,
