@@ -3800,8 +3800,8 @@ local Library do
                 MaxSize = Data.MaxSize or Data.maxsize or 145,
                 Callback = Data.Callback or Data.callback or function() end,
                 Multi = Data.Multi or Data.multi or false,
-                Searchable = Data.Searchable or Data.searchable or false,
-                SearchPlaceholder = Data.SearchPlaceholder or Data.searchplaceholder or "Search",
+                Searchable = Data.Searchable == true or Data.searchable == true,
+                SearchPlaceholder = Data.SearchPlaceholder or Data.searchplaceholder or "Search...",
 
                 Value = { },
                 Options = { },
@@ -3916,7 +3916,7 @@ local Library do
                     Color = FromRGB(26, 30, 36),
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 }):AddToTheme({Color = "Outline"})
-
+                
                 if Dropdown.Searchable then
                     Items["Search"] = Instances:Create("Frame", {
                         Parent = Items["OptionHolder"].Instance,
@@ -3924,8 +3924,7 @@ local Library do
                         Position = UDim2New(0, 7, 0, 7),
                         Size = UDim2New(1, -14, 0, 26),
                         BorderSizePixel = 0,
-                        BackgroundColor3 = FromRGB(28, 32, 38),
-                        ZIndex = 4
+                        BackgroundColor3 = FromRGB(28, 32, 38)
                     })  Items["Search"]:AddToTheme({BackgroundColor3 = "Element"})
 
                     Instances:Create("UICorner", {
@@ -3938,13 +3937,12 @@ local Library do
                         Parent = Items["Search"].Instance,
                         Name = "\0",
                         Image = "rbxassetid://108790783092951",
-                        ImageTransparency = 0.45,
+                        ImageTransparency = 0.5,
                         BackgroundTransparency = 1,
                         AnchorPoint = Vector2New(0, 0.5),
                         Position = UDim2New(0, 7, 0.5, 0),
                         Size = UDim2New(0, 14, 0, 14),
                         BorderSizePixel = 0,
-                        ZIndex = 5,
                         BackgroundColor3 = FromRGB(255, 255, 255)
                     })  Items["SearchIcon"]:AddToTheme({ImageColor3 = "Text"})
 
@@ -3963,11 +3961,10 @@ local Library do
                         Size = UDim2New(1, -32, 1, 0),
                         BorderSizePixel = 0,
                         TextSize = 13,
-                        ZIndex = 5,
                         BackgroundColor3 = FromRGB(255, 255, 255)
-                    })  Items["SearchInput"]:AddToTheme({TextColor3 = "Text", PlaceholderColor3 = "Dark Text"})
+                    })
                 end
-                
+
                 Items["Holder"] = Instances:Create("ScrollingFrame", {
                     Parent = Items["OptionHolder"].Instance,
                     Name = "\0",
@@ -4034,7 +4031,7 @@ local Library do
 
                 for _, OptionData in Dropdown.Options do
                     local OptionName = StringLower(tostring(OptionData.Name))
-                    OptionData.Button.Instance.Visible = Query == "" or StringFind(OptionName, Query) ~= nil
+                    OptionData.Button.Instance.Visible = Query == "" or StringFind(OptionName, Query, 1, true) ~= nil
                 end
             end
 
@@ -4054,6 +4051,7 @@ local Library do
                     if Dropdown.Searchable and Items["SearchInput"] then
                         Items["SearchInput"].Instance.Text = ""
                         Dropdown:Filter("")
+                        Items["Holder"].Instance.CanvasPosition = Vector2New(0, 0)
                     end
 
                     Items["OptionHolder"].Instance.Visible = true
@@ -4326,10 +4324,6 @@ local Library do
 
                 for Index, Value in List do 
                     Dropdown:Add(Value)
-                end
-
-                if Dropdown.Searchable and Items["SearchInput"] then
-                    Dropdown:Filter(Items["SearchInput"].Instance.Text)
                 end
             end
 
