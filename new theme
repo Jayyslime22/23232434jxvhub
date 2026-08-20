@@ -1877,7 +1877,7 @@ local Library do
                         Size = UDim2New(0, 16, 0, 16),
                         BorderSizePixel = 0,
                         BackgroundColor3 = FromRGB(255, 255, 255)
-                    })
+                    })  Items["Icon"]:AddToTheme({ImageColor3 = "Text"})
                     
                     Instances:Create("UIPadding", {
                         Parent = Items["Notification"].Instance,
@@ -2362,7 +2362,7 @@ local Library do
                     ZIndex = 2,
                     TextSize = 14,
                     BackgroundColor3 = FromRGB(255, 255, 255)
-                })
+                })  Items["Input"]:AddToTheme({TextColor3 = "Text", PlaceholderColor3 = "Dark Text"})
 
                 local IsSearching = false
 
@@ -3797,9 +3797,11 @@ local Library do
                 Flag = Data.Flag or Data.flag or Library:NextFlag(),
                 Items = Data.Items or Data.items or { "One", "Two", "Three" },
                 Default = Data.Default or Data.default or nil,
-                MaxSize = Data.MaxSize or Data.maxsize or 145,
+                MaxSize = Data.MaxSize or Data.maxsize or 165,
                 Callback = Data.Callback or Data.callback or function() end,
                 Multi = Data.Multi or Data.multi or false,
+                Searchable = Data.Searchable ~= false,
+                SearchPlaceholder = Data.SearchPlaceholder or Data.searchplaceholder or "Search",
 
                 Value = { },
                 Options = { },
@@ -3884,7 +3886,7 @@ local Library do
                     Size = UDim2New(0, 16, 0, 16),
                     BorderSizePixel = 0,
                     BackgroundColor3 = FromRGB(255, 255, 255)
-                })  Items["Icon"]:AddToTheme({ImageColor3 = "Text"})       
+                })  Items["Icon"]:AddToTheme({ImageColor3 = "Text"})
                 
                 Items["OptionHolder"] = Instances:Create("TextButton", {
                     Parent = Library.UnusedHolder.Instance,
@@ -3899,6 +3901,7 @@ local Library do
                     Size = UDim2New(0, Items["RealDropdown"].Instance.AbsoluteSize.X, 0, 127),
                     BorderSizePixel = 0,
                     TextSize = 14,
+                    ClipsDescendants = true,
                     BackgroundColor3 = FromRGB(13, 15, 18)
                 })  Items["OptionHolder"]:AddToTheme({BackgroundColor3 = "Background"})
                 
@@ -3914,6 +3917,61 @@ local Library do
                     Color = FromRGB(26, 30, 36),
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 }):AddToTheme({Color = "Outline"})
+
+                Items["Search"] = Instances:Create("Frame", {
+                    Parent = Items["OptionHolder"].Instance,
+                    Name = "\0",
+                    Visible = Dropdown.Searchable,
+                    Position = UDim2New(0, 7, 0, 7),
+                    Size = UDim2New(1, -14, 0, 25),
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = FromRGB(28, 32, 38)
+                })  Items["Search"]:AddToTheme({BackgroundColor3 = "Element"})
+
+                Instances:Create("UICorner", {
+                    Parent = Items["Search"].Instance,
+                    Name = "\0",
+                    CornerRadius = UDimNew(0, 5)
+                })
+
+                Instances:Create("UIStroke", {
+                    Parent = Items["Search"].Instance,
+                    Name = "\0",
+                    Transparency = 0.35,
+                    Color = FromRGB(26, 30, 36),
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                }):AddToTheme({Color = "Outline"})
+
+                Items["SearchIcon"] = Instances:Create("ImageLabel", {
+                    Parent = Items["Search"].Instance,
+                    Name = "\0",
+                    Image = "rbxassetid://108790783092951",
+                    ImageTransparency = 0.35,
+                    BackgroundTransparency = 1,
+                    Position = UDim2New(0, 8, 0.5, -7),
+                    Size = UDim2New(0, 14, 0, 14),
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = FromRGB(255, 255, 255)
+                })  Items["SearchIcon"]:AddToTheme({ImageColor3 = "Text"})
+
+                Items["SearchInput"] = Instances:Create("TextBox", {
+                    Parent = Items["Search"].Instance,
+                    Name = "\0",
+                    FontFace = Library.Font,
+                    Text = "",
+                    PlaceholderText = Dropdown.SearchPlaceholder,
+                    PlaceholderColor3 = FromRGB(100, 100, 100),
+                    TextColor3 = FromRGB(200, 200, 200),
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ClearTextOnFocus = false,
+                    BackgroundTransparency = 1,
+                    Position = UDim2New(0, 28, 0, 0),
+                    Size = UDim2New(1, -34, 1, 0),
+                    BorderSizePixel = 0,
+                    TextSize = 13,
+                    ZIndex = 4,
+                    BackgroundColor3 = FromRGB(255, 255, 255)
+                })  Items["SearchInput"]:AddToTheme({TextColor3 = "Text", PlaceholderColor3 = "Dark Text"})
                 
                 Items["Holder"] = Instances:Create("ScrollingFrame", {
                     Parent = Items["OptionHolder"].Instance,
@@ -3922,9 +3980,9 @@ local Library do
                     Active = true,
                     AutomaticCanvasSize = Enum.AutomaticSize.Y,
                     ScrollBarThickness = 0,
-                    Size = UDim2New(1, -14, 1, -14),
+                    Size = Dropdown.Searchable and UDim2New(1, -14, 1, -46) or UDim2New(1, -14, 1, -14),
                     BackgroundTransparency = 1,
-                    Position = UDim2New(0, 7, 0, 7),
+                    Position = Dropdown.Searchable and UDim2New(0, 7, 0, 39) or UDim2New(0, 7, 0, 7),
                     BackgroundColor3 = FromRGB(255, 255, 255),
                     BorderColor3 = FromRGB(0, 0, 0),
                     BorderSizePixel = 0,
@@ -3972,6 +4030,15 @@ local Library do
                 Items["Dropdown"].Instance.Visible = Bool
             end
 
+            function Dropdown:Filter(Query)
+                Query = StringLower(tostring(Query or ""))
+
+                for _, OptionData in Dropdown.Options do
+                    local Match = Query == "" or StringFind(StringLower(OptionData.Name), Query) ~= nil
+                    OptionData.Button.Instance.Visible = Match
+                end
+            end
+
             local Debounce = false 
             local RenderStepped 
 
@@ -3981,10 +4048,14 @@ local Library do
                 end
 
                 Dropdown.IsOpen = Bool
-
                 Debounce = true 
 
                 if Dropdown.IsOpen then 
+                    if Dropdown.Searchable then
+                        Items["SearchInput"].Instance.Text = ""
+                        Dropdown:Filter("")
+                    end
+
                     Items["OptionHolder"].Instance.Visible = true
                     Items["OptionHolder"].Instance.Parent = Library.Holder.Instance
                     Items["OptionHolder"].Instance.Size = UDim2New(0, Items["RealDropdown"].Instance.AbsoluteSize.X, 0, 0)
@@ -4000,6 +4071,12 @@ local Library do
 
                     Library.OpenFrames[Dropdown] = Dropdown 
                 else
+                    if Dropdown.Searchable then
+                        Items["SearchInput"].Instance:ReleaseFocus()
+                        Items["SearchInput"].Instance.Text = ""
+                        Dropdown:Filter("")
+                    end
+
                     if Library.OpenFrames[Dropdown] then 
                         Library.OpenFrames[Dropdown] = nil
                     end
@@ -4250,6 +4327,10 @@ local Library do
                 for Index, Value in List do 
                     Dropdown:Add(Value)
                 end
+
+                if Dropdown.Searchable then
+                    Dropdown:Filter(Items["SearchInput"].Instance.Text)
+                end
             end
 
             local PageSearchData = Library.SearchItems[Dropdown.Page]
@@ -4261,6 +4342,12 @@ local Library do
                 }
 
                 TableInsert(PageSearchData, SearchData)
+            end
+
+            if Dropdown.Searchable then
+                Library:Connect(Items["SearchInput"].Instance:GetPropertyChangedSignal("Text"), function()
+                    Dropdown:Filter(Items["SearchInput"].Instance.Text)
+                end)
             end
 
             Items["RealDropdown"]:Connect("MouseButton1Down", function()
@@ -4446,147 +4533,6 @@ local Library do
 
             return Label
         end
-
-        Library.Sections.Searchbar = function(self, Data)
-            Data = Data or { }
-
-            local Searchbar = {
-                Window = self.Window,
-                Page = self.Page,
-                Section = self,
-
-                Placeholder = Data.Placeholder or Data.placeholder or "Search",
-                Target = Data.Target or Data.target or "Section",
-                Callback = Data.Callback or Data.callback or function() end,
-                Value = ""
-            }
-
-            local Items = { } do
-                Items["Searchbar"] = Instances:Create("Frame", {
-                    Parent = Searchbar.Section.Items["Content"].Instance,
-                    Name = "\0",
-                    Size = UDim2New(1, 0, 0, 28),
-                    BorderSizePixel = 0,
-                    BackgroundColor3 = FromRGB(24, 28, 34)
-                })
-
-                Instances:Create("UICorner", {
-                    Parent = Items["Searchbar"].Instance,
-                    Name = "\0",
-                    CornerRadius = UDimNew(0, 5)
-                })
-
-                Items["Stroke"] = Instances:Create("UIStroke", {
-                    Parent = Items["Searchbar"].Instance,
-                    Name = "\0",
-                    Color = FromRGB(43, 49, 58),
-                    Transparency = 0.25,
-                    Thickness = 1,
-                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-                })
-
-                Items["Icon"] = Instances:Create("ImageLabel", {
-                    Parent = Items["Searchbar"].Instance,
-                    Name = "\0",
-                    Image = "rbxassetid://108790783092951",
-                    ImageTransparency = 0.45,
-                    ImageColor3 = FromRGB(190, 195, 203),
-                    BackgroundTransparency = 1,
-                    AnchorPoint = Vector2New(0, 0.5),
-                    Position = UDim2New(0, 8, 0.5, 0),
-                    Size = UDim2New(0, 14, 0, 14),
-                    BorderSizePixel = 0
-                })  Items["Icon"]:AddToTheme({ImageColor3 = "Text"})
-
-                Items["Input"] = Instances:Create("TextBox", {
-                    Parent = Items["Searchbar"].Instance,
-                    Name = "\0",
-                    FontFace = Library.Font,
-                    Text = "",
-                    PlaceholderText = Searchbar.Placeholder,
-                    PlaceholderColor3 = FromRGB(110, 116, 126),
-                    TextColor3 = FromRGB(220, 223, 228),
-                    TextSize = 13,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    ClearTextOnFocus = false,
-                    BackgroundTransparency = 1,
-                    AnchorPoint = Vector2New(0, 0.5),
-                    Position = UDim2New(0, 29, 0.5, 0),
-                    Size = UDim2New(1, -37, 0, 18),
-                    BorderSizePixel = 0
-                })  Items["Input"]:AddToTheme({TextColor3 = "Text", PlaceholderColor3 = "Dark Text"})
-            end
-
-            local function IsTarget(Element)
-                if Searchbar.Target == "Page" or Searchbar.Target == "page" then
-                    return true
-                end
-
-                local TargetSection = type(Searchbar.Target) == "table" and Searchbar.Target or Searchbar.Section
-
-                if not TargetSection or not TargetSection.Items or not TargetSection.Items["Section"] then
-                    return false
-                end
-
-                return Element.Instance:IsDescendantOf(TargetSection.Items["Section"].Instance)
-            end
-
-            function Searchbar:Filter(Text)
-                Text = tostring(Text or "")
-                Searchbar.Value = Text
-
-                local Query = StringLower(Text)
-                local PageSearchData = Library.SearchItems[Searchbar.Page]
-
-                if PageSearchData then
-                    for _, Value in PageSearchData do
-                        local Element = Value.Element
-
-                        if Element and Element.Instance and IsTarget(Element) then
-                            Element.Instance.Visible = Query == "" or StringFind(StringLower(tostring(Value.Name)), Query, 1, true) ~= nil
-                        end
-                    end
-                end
-
-                Library:SafeCall(Searchbar.Callback, Text)
-            end
-
-            function Searchbar:Get()
-                return Searchbar.Value
-            end
-
-            function Searchbar:Set(Text)
-                Text = tostring(Text or "")
-                Items["Input"].Instance.Text = Text
-                Searchbar:Filter(Text)
-            end
-
-            function Searchbar:Clear()
-                Searchbar:Set("")
-            end
-
-            function Searchbar:SetVisibility(Bool)
-                Items["Searchbar"].Instance.Visible = Bool
-            end
-
-            Items["Input"]:Connect("Focused", function()
-                Items["Stroke"]:Tween(nil, {Color = FromRGB(72, 79, 90), Transparency = 0})
-                Items["Icon"]:Tween(nil, {ImageTransparency = 0.15})
-            end)
-
-            Items["Input"]:Connect("FocusLost", function()
-                Items["Stroke"]:Tween(nil, {Color = FromRGB(43, 49, 58), Transparency = 0.25})
-                Items["Icon"]:Tween(nil, {ImageTransparency = 0.45})
-            end)
-
-            Library:Connect(Items["Input"].Instance:GetPropertyChangedSignal("Text"), function()
-                Searchbar:Filter(Items["Input"].Instance.Text)
-            end)
-
-            return Searchbar
-        end
-
-        Library.Sections.Search = Library.Sections.Searchbar
 
         Library.Sections.Textbox = function(self, Data)
             Data = Data or { }
