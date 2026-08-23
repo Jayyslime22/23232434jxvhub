@@ -4642,8 +4642,11 @@ local Library do
                     Parent = Items["Background"].Instance,
                     Name = "\0",
                     FontFace = Library.Font,
-                    Active = false,
-                    Selectable = false,
+                    Active = true,
+                    Selectable = true,
+                    TextEditable = true,
+                    ClearTextOnFocus = false,
+                    MultiLine = false,
                     AnchorPoint = Vector2New(0, 0.5),
                     TextTruncate = Enum.TextTruncate.AtEnd,
                     PlaceholderText = Textbox.Placeholder,
@@ -4661,6 +4664,13 @@ local Library do
                     BackgroundColor3 = FromRGB(255, 255, 255)
                 })  Items["Input"]:AddToTheme({TextColor3 = "Text", PlaceholderColor3 = "Dark Text"})              
             end
+
+            -- Let touch users focus the field from anywhere inside its background.
+            Items["Background"]:Connect("InputBegan", function(Input)
+                if Input.UserInputType == Enum.UserInputType.Touch or Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    Items["Input"].Instance:CaptureFocus()
+                end
+            end)
             
             function Textbox:Get()
                 return Textbox.Value
