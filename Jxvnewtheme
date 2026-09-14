@@ -1945,6 +1945,15 @@ local Library do
                 CornerRadius = UDimNew(0, 5)
             })
 
+            Instances:Create("UIGradient", {
+                Parent = Items["Frame"].Instance,
+                Rotation = 90,
+                Color = RGBSequence{
+                    RGBSequenceKeypoint(0, FromRGB(255, 255, 255)),
+                    RGBSequenceKeypoint(1, FromRGB(218, 218, 224))
+                }
+            })
+
             Items["Stroke"] = Instances:Create("UIStroke", {
                 Parent = Items["Frame"].Instance,
                 Color = Library.Theme.Accent,
@@ -1969,6 +1978,15 @@ local Library do
                 CornerRadius = UDimNew(0, 5)
             })
 
+            Instances:Create("UIGradient", {
+                Parent = Items["Header"].Instance,
+                Rotation = 0,
+                Color = RGBSequence{
+                    RGBSequenceKeypoint(0, FromRGB(255, 255, 255)),
+                    RGBSequenceKeypoint(1, FromRGB(225, 225, 232))
+                }
+            })
+
             Instances:Create("Frame", {
                 Parent = Items["Header"].Instance,
                 Name = "\0",
@@ -1987,7 +2005,7 @@ local Library do
                 Size = UDim2New(1, -42, 1, 0),
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
-                Text = "KEYBIND SETTINGS",
+                Text = "Keybind Settings",
                 TextColor3 = Library.Theme.Text,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 FontFace = Library.Font,
@@ -2012,6 +2030,14 @@ local Library do
             })
             Items["Close"]:AddToTheme({TextColor3 = "Dark Text"})
 
+            Items["Close"]:OnHover(function()
+                Items["Close"]:Tween(nil, {TextColor3 = Library.Theme.Accent})
+            end)
+
+            Items["Close"]:OnHoverLeave(function()
+                Items["Close"]:Tween(nil, {TextColor3 = Library.Theme["Dark Text"]})
+            end)
+
             local function CreateDivider(Y)
                 local Divider = Instances:Create("Frame", {
                     Parent = Items["Frame"].Instance,
@@ -2020,7 +2046,7 @@ local Library do
                     Size = UDim2New(1, -18, 0, 1),
                     BorderSizePixel = 0,
                     BackgroundColor3 = Library.Theme.Outline,
-                    BackgroundTransparency = 0.68,
+                    BackgroundTransparency = 0.8,
                     ZIndex = 91
                 })
                 Divider:AddToTheme({BackgroundColor3 = "Outline"})
@@ -2036,6 +2062,7 @@ local Library do
                     BorderSizePixel = 0,
                     Text = Text,
                     TextColor3 = Library.Theme["Dark Text"],
+                    TextTransparency = 0.08,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     FontFace = Library.Font,
                     TextSize = 11,
@@ -2054,7 +2081,7 @@ local Library do
                     BorderSizePixel = 0,
                     AutoButtonColor = false,
                     BackgroundColor3 = Library.Theme.Element,
-                    BackgroundTransparency = 0.42,
+                    BackgroundTransparency = 0.56,
                     Text = Text,
                     TextColor3 = Library.Theme.Text,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -2064,10 +2091,25 @@ local Library do
                 })
                 Button:AddToTheme({BackgroundColor3 = "Element", TextColor3 = "Text"})
 
+                Button:OnHover(function()
+                    Button:Tween(nil, {BackgroundTransparency = 0.45})
+                end)
+
+                Button:OnHoverLeave(function()
+                    Button:Tween(nil, {BackgroundTransparency = 0.56})
+                end)
+
                 Instances:Create("UICorner", {
                     Parent = Button.Instance,
                     CornerRadius = UDimNew(0, 4)
                 })
+
+                Instances:Create("UIStroke", {
+                    Parent = Button.Instance,
+                    Color = Library.Theme.Outline,
+                    Thickness = 1,
+                    Transparency = 0.72
+                }):AddToTheme({Color = "Outline"})
 
                 Instances:Create("UIPadding", {
                     Parent = Button.Instance,
@@ -2081,8 +2123,8 @@ local Library do
 
             CreateLabel("Key", 28)
             CreateLabel("Mode", 56)
-            CreateLabel("ON Value", 84)
-            CreateLabel("OFF Value", 112)
+            CreateLabel("On value", 84)
+            CreateLabel("Off value", 112)
             CreateLabel("Name", 140)
 
             CreateDivider(55)
@@ -2091,7 +2133,7 @@ local Library do
             CreateDivider(139)
 
             CreateValueButton("KeyValue", 28, "None")
-            CreateValueButton("ModeValue", 56, "Off")
+            CreateValueButton("ModeValue", 56, "Toggle")
 
             Items["ModeArrow"] = Instances:Create("TextLabel", {
                 Parent = Items["ModeValue"].Instance,
@@ -2117,6 +2159,7 @@ local Library do
                 Visible = false,
                 BorderSizePixel = 0,
                 BackgroundColor3 = Library.Theme.Inline,
+                BackgroundTransparency = 0.04,
                 ZIndex = 100
             })
             Items["ModeMenu"]:AddToTheme({BackgroundColor3 = "Inline"})
@@ -2194,7 +2237,7 @@ local Library do
                     Name = "\0",
                     AnchorPoint = Vector2New(1, 0.5),
                     Position = UDim2New(1, -10, 0, Y + 13),
-                    Size = UDim2New(0, 31, 0, 17),
+                Size = UDim2New(0, 30, 0, 16),
                     BorderSizePixel = 0,
                     AutoButtonColor = false,
                     BackgroundColor3 = Library.Theme.Element,
@@ -2213,7 +2256,7 @@ local Library do
                     Name = "\0",
                     AnchorPoint = Vector2New(0.5, 0.5),
                     Position = UDim2New(0, 8, 0.5, 0),
-                    Size = UDim2New(0, 11, 0, 11),
+                    Size = UDim2New(0, 10, 0, 10),
                     BorderSizePixel = 0,
                     BackgroundColor3 = FromRGB(238, 238, 242),
                     ZIndex = 94
@@ -2238,7 +2281,7 @@ local Library do
                 Size = UDim2New(1, -100, 0, 19),
                 BorderSizePixel = 0,
                 BackgroundColor3 = Library.Theme.Element,
-                BackgroundTransparency = 0.42,
+                BackgroundTransparency = 0.56,
                 ClearTextOnFocus = false,
                 MultiLine = false,
                 Active = true,
@@ -2258,6 +2301,13 @@ local Library do
                 Parent = Items["NameValue"].Instance,
                 CornerRadius = UDimNew(0, 4)
             })
+
+            Instances:Create("UIStroke", {
+                Parent = Items["NameValue"].Instance,
+                Color = Library.Theme.Outline,
+                Thickness = 1,
+                Transparency = 0.72
+            }):AddToTheme({Color = "Outline"})
 
             Instances:Create("UIPadding", {
                 Parent = Items["NameValue"].Instance,
@@ -2574,6 +2624,15 @@ local Library do
                 CornerRadius = UDimNew(0, 5)
             })
 
+            Instances:Create("UIGradient", {
+                Parent = Items["Frame"].Instance,
+                Rotation = 90,
+                Color = RGBSequence{
+                    RGBSequenceKeypoint(0, FromRGB(255, 255, 255)),
+                    RGBSequenceKeypoint(1, FromRGB(220, 220, 226))
+                }
+            })
+
             Items["Stroke"] = Instances:Create("UIStroke", {
                 Parent = Items["Frame"].Instance,
                 Color = Library.Theme.Accent,
@@ -2598,6 +2657,15 @@ local Library do
                 CornerRadius = UDimNew(0, 5)
             })
 
+            Instances:Create("UIGradient", {
+                Parent = Items["Header"].Instance,
+                Rotation = 0,
+                Color = RGBSequence{
+                    RGBSequenceKeypoint(0, FromRGB(255, 255, 255)),
+                    RGBSequenceKeypoint(1, FromRGB(226, 226, 232))
+                }
+            })
+
             Instances:Create("Frame", {
                 Parent = Items["Header"].Instance,
                 Name = "\0",
@@ -2617,6 +2685,7 @@ local Library do
                 Size = UDim2New(1, 0, 0, 1),
                 BorderSizePixel = 0,
                 BackgroundColor3 = Library.Theme.Accent,
+                BackgroundTransparency = 0.28,
                 ZIndex = 83
             })
             Items["AccentLine"]:AddToTheme({BackgroundColor3 = "Accent"})
@@ -2628,11 +2697,11 @@ local Library do
                 Size = UDim2New(1, -92, 1, 0),
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
-                Text = "JXV.HUB  •  KEYBINDS",
+                Text = "Jxv.Hub  •  Keybinds",
                 TextColor3 = Library.Theme.Text,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 FontFace = Library.Font,
-                TextSize = 11,
+                TextSize = 12,
                 ZIndex = 83
             })
             Items["Title"]:AddToTheme({TextColor3 = "Text"})
@@ -2644,7 +2713,7 @@ local Library do
                 Size = UDim2New(0, 65, 1, 0),
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
-                Text = "0 ACTIVE",
+                Text = "0 active",
                 TextColor3 = Library.Theme["Dark Text"],
                 TextTransparency = 0.35,
                 TextXAlignment = Enum.TextXAlignment.Right,
@@ -2688,7 +2757,7 @@ local Library do
                 Size = UDim2New(1, -14, 0, 24),
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
-                Text = "No keybinds assigned",
+                Text = "No keybinds yet",
                 TextColor3 = Library.Theme["Dark Text"],
                 TextTransparency = 0.48,
                 FontFace = Library.Font,
@@ -2737,7 +2806,7 @@ local Library do
                 end
 
                 Items["Empty"].Instance.Visible = VisibleCount == 0
-                Items["Count"].Instance.Text = tostring(ActiveCount) .. " ACTIVE"
+                Items["Count"].Instance.Text = tostring(ActiveCount) .. " active"
 
                 local ContentHeight = VisibleCount > 0 and (VisibleCount * 26 + 8) or 32
                 local BodyHeight = MathClamp(ContentHeight, 32, 190)
@@ -2783,7 +2852,7 @@ local Library do
                 Size = UDim2New(1, -14, 0, 24),
                 BorderSizePixel = 0,
                 BackgroundColor3 = Library.Theme.Inline,
-                BackgroundTransparency = 0.72,
+                BackgroundTransparency = 0.8,
                 ZIndex = 82
             })
             RowItems["Row"]:AddToTheme({BackgroundColor3 = "Inline"})
@@ -2827,6 +2896,13 @@ local Library do
                 Parent = RowItems["KeyBox"].Instance,
                 CornerRadius = UDimNew(0, 3)
             })
+
+            Instances:Create("UIStroke", {
+                Parent = RowItems["KeyBox"].Instance,
+                Color = Library.Theme.Accent,
+                Thickness = 1,
+                Transparency = 0.62
+            }):AddToTheme({Color = "Accent"})
 
             RowItems["Key"] = Instances:Create("TextLabel", {
                 Parent = RowItems["KeyBox"].Instance,
@@ -4358,7 +4434,7 @@ local Library do
                         Name = Toggle.Name,
                         Flag = Toggle.Flag .. "/Keybind",
                         Default = Enum.KeyCode.Backspace,
-                        Mode = "Off",
+                        Mode = "Toggle",
                         Callback = function(Value)
                             Toggle:Set(Value)
                         end
