@@ -94,6 +94,7 @@ local Library do
 
         KeybindEntries = { },
         KeybindList = nil,
+        KeybindEditor = nil,
 
         SetFlags = { },
 
@@ -831,7 +832,13 @@ local Library do
         local Success, Result = Library:SafeCall(function()
             for Index, Value in Library.Flags do 
                 if type(Value) == "table" and Value.Key then
-                    Config[Index] = {Key = tostring(Value.Key), Mode = Value.Mode}
+                    Config[Index] = {
+                        Key = tostring(Value.Key),
+                        Mode = Value.Mode,
+                        OnValue = Value.OnValue,
+                        OffValue = Value.OffValue,
+                        Name = Value.Name
+                    }
                 elseif type(Value) == "table" and Value.Color then
                     Config[Index] = {Color = "#" .. Value.HexValue, Alpha = Value.Alpha}
                 else
@@ -1416,10 +1423,13 @@ local Library do
                 Mode = "",
                 Value = "",
                 Key = "",
+                OnValue = Data.OnValue ~= false,
+                OffValue = Data.OffValue == true,
 
                 Picking = false,
                 Toggled = false,
-                IsOpen = false
+                IsOpen = false,
+                Initializing = true
             }
 
             local Items = { } do
@@ -1631,18 +1641,24 @@ local Library do
                 Library.Flags[Keybind.Flag] = {
                     Mode = Keybind.Mode,
                     Key = Keybind.Key,
-                    Toggled = Keybind.Toggled
+                    Toggled = Keybind.Toggled,
+                    OnValue = Keybind.OnValue,
+                    OffValue = Keybind.OffValue,
+                    Name = Keybind.Name
                 }
 
-                if Data.Callback then 
-                    Library:SafeCall(Data.Callback, Keybind.Toggled)
+                if Data.Callback and not Keybind.Initializing then 
+                    local Output = Keybind.Toggled and Keybind.OnValue or Keybind.OffValue
+                    Library:SafeCall(Data.Callback, Output)
                 end
 
                 Library:RefreshKeybindList()
             end
 
             function Keybind:Press(Bool)
-                if Keybind.Mode == "Toggle" then 
+                if Keybind.Mode == "Off" then
+                    Keybind.Toggled = false
+                elseif Keybind.Mode == "Toggle" then 
                     Keybind.Toggled = not Keybind.Toggled
                 elseif Keybind.Mode == "Hold" then 
                     Keybind.Toggled = Bool
@@ -1653,11 +1669,15 @@ local Library do
                 Library.Flags[Keybind.Flag] = {
                     Mode = Keybind.Mode,
                     Key = Keybind.Key,
-                    Toggled = Keybind.Toggled
+                    Toggled = Keybind.Toggled,
+                    OnValue = Keybind.OnValue,
+                    OffValue = Keybind.OffValue,
+                    Name = Keybind.Name
                 }
 
-                if Data.Callback then 
-                    Library:SafeCall(Data.Callback, Keybind.Toggled)
+                if Data.Callback and not Keybind.Initializing then 
+                    local Output = Keybind.Toggled and Keybind.OnValue or Keybind.OffValue
+                    Library:SafeCall(Data.Callback, Output)
                 end
 
                 Library:RefreshKeybindList()
@@ -1682,15 +1702,34 @@ local Library do
                     Library.Flags[Keybind.Flag] = {
                         Mode = Keybind.Mode,
                         Key = Keybind.Key,
-                        Toggled = Keybind.Toggled
+                        Toggled = Keybind.Toggled,
+                        OnValue = Keybind.OnValue,
+                        OffValue = Keybind.OffValue,
+                        Name = Keybind.Name
                     }
 
-                    if Data.Callback then 
-                        Library:SafeCall(Data.Callback, Keybind.Toggled)
+                    if Data.Callback and not Keybind.Initializing then 
+                        local Output = Keybind.Toggled and Keybind.OnValue or Keybind.OffValue
+                        Library:SafeCall(Data.Callback, Output)
                     end
                 elseif type(Key) == "table" then
-                    local RealKey = Key.Key == "Backspace" and "None" or Key.Key
-                    Keybind.Key = tostring(Key.Key)
+                    local RawKey = tostring(Key.Key)
+                    local KeyName = StringGSub(StringGSub(RawKey, "Enum.KeyCode.", ""), "Enum.UserInputType.", "")
+                    local IsNone = KeyName == "Backspace" or KeyName == "None"
+                    local RealKey = IsNone and "None" or RawKey
+                    Keybind.Key = IsNone and tostring(Enum.KeyCode.Backspace) or RawKey
+
+                    if Key.OnValue ~= nil then
+                        Keybind.OnValue = Key.OnValue
+                    end
+
+                    if Key.OffValue ~= nil then
+                        Keybind.OffValue = Key.OffValue
+                    end
+
+                    if Key.Name and Key.Name ~= "" then
+                        Keybind.Name = Key.Name
+                    end
 
                     if Key.Mode then
                         Keybind.Mode = Key.Mode
@@ -1700,7 +1739,7 @@ local Library do
                         Keybind:SetMode("Toggle")
                     end
 
-                    local KeyString = Keys[Keybind.Key] or StringGSub(tostring(RealKey), "Enum.", "") or RealKey
+                    local KeyString = IsNone and "None" or Keys[Keybind.Key] or StringGSub(tostring(RealKey), "Enum.", "") or RealKey
                     local TextToDisplay = KeyString and StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "") or "None"
 
                     TextToDisplay = StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "")
@@ -1708,39 +1747,57 @@ local Library do
                     Keybind.Value = TextToDisplay
                     Items["KeyButton"].Instance.Text = TextToDisplay
 
-                    if Data.Callback then 
-                        Library:SafeCall(Data.Callback, Keybind.Toggled)
+                    if Data.Callback and not Keybind.Initializing then 
+                        local Output = Keybind.Toggled and Keybind.OnValue or Keybind.OffValue
+                        Library:SafeCall(Data.Callback, Output)
                     end
-                elseif TableFind({"Toggle", "Hold", "Always"}, Key) then
+                elseif TableFind({"Off", "Toggle", "Hold", "Always"}, Key) then
                     Keybind.Mode = Key
                     Keybind:SetMode(Key)
 
-                    if Data.Callback then 
-                        Library:SafeCall(Data.Callback, Keybind.Toggled)
+                    if Data.Callback and not Keybind.Initializing then 
+                        local Output = Keybind.Toggled and Keybind.OnValue or Keybind.OffValue
+                        Library:SafeCall(Data.Callback, Output)
                     end
                 end
 
                 --Items["KeyButton"].Instance.Position = UDim2New(0, Data.Text.Instance.TextBounds.X + 12, 0, 0)
                 Keybind.Picking = false
                 Library:RefreshKeybindList()
+
+                if Library.KeybindEditor then
+                    Library.KeybindEditor:Refresh()
+                end
             end
 
-            Items["KeyButton"]:Connect("MouseButton1Click", function()
-                Keybind.Picking = true 
+            function Keybind:BeginPicking(DisplayItem)
+                if Keybind.Picking then
+                    return
+                end
 
-                Items["KeyButton"].Instance.Text = "Press a key"
+                Keybind.Picking = true 
+                local Display = DisplayItem and (DisplayItem.Instance or DisplayItem) or Items["KeyButton"].Instance
+                Display.Text = "Press a key"
 
                 local InputBegan
                 InputBegan = UserInputService.InputBegan:Connect(function(Input)
                     if Input.UserInputType == Enum.UserInputType.Keyboard then 
                         Keybind:Set(Input.KeyCode)
-                    else
+                    elseif Input.UserInputType == Enum.UserInputType.MouseButton1
+                        or Input.UserInputType == Enum.UserInputType.MouseButton2
+                        or Input.UserInputType == Enum.UserInputType.MouseButton3 then
                         Keybind:Set(Input.UserInputType)
+                    else
+                        return
                     end
 
                     InputBegan:Disconnect()
                     InputBegan = nil
                 end)
+            end
+
+            Items["KeyButton"]:Connect("MouseButton1Click", function()
+                Keybind:BeginPicking(Items["KeyButton"])
             end)
 
             Library:Connect(UserInputService.InputBegan, function(Input)
@@ -1800,7 +1857,12 @@ local Library do
             end)
 
             Items["KeyButton"]:Connect("MouseButton2Down", function()
-                Keybind:SetOpen(not Keybind.IsOpen)
+                if Keybind.Editor then
+                    local ShouldOpen = not (Keybind.Editor.IsOpen and Keybind.Editor.Current == Keybind)
+                    Keybind.Editor:SetOpen(ShouldOpen, Keybind, Data.Source)
+                else
+                    Keybind:SetOpen(not Keybind.IsOpen)
+                end
             end)
 
             Items["Toggle"]:Connect("MouseButton1Down", function()
@@ -1825,6 +1887,8 @@ local Library do
                 })
             end
 
+            Keybind.Initializing = false
+
             Library:RegisterKeybind(Keybind)
 
             Library.SetFlags[Keybind.Flag] = function(Value)
@@ -1832,6 +1896,502 @@ local Library do
             end
 
             return Keybind, Items 
+        end
+
+        Library.CreateKeybindEditor = function(self)
+            if self.KeybindEditor then
+                return self.KeybindEditor
+            end
+
+            local Editor = {
+                Current = nil,
+                Source = nil,
+                IsOpen = false,
+                Items = { }
+            }
+
+            local Items = Editor.Items
+
+            Items["Frame"] = Instances:Create("Frame", {
+                Parent = Library.UnusedHolder.Instance,
+                Name = "\0",
+                Visible = false,
+                Size = UDim2New(0, 222, 0, 168),
+                BorderSizePixel = 0,
+                BackgroundColor3 = Library.Theme.Background,
+                ZIndex = 90
+            })
+            Items["Frame"]:AddToTheme({BackgroundColor3 = "Background"})
+
+            Items["Shadow"] = Instances:Create("ImageLabel", {
+                Parent = Items["Frame"].Instance,
+                Name = "\0",
+                AnchorPoint = Vector2New(0.5, 0.5),
+                Position = UDim2New(0.5, 0, 0.5, 0),
+                Size = UDim2New(1, 22, 1, 22),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                Image = "http://www.roblox.com/asset/?id=18245826428",
+                ImageColor3 = Library.Theme.Accent,
+                ImageTransparency = 0.62,
+                ScaleType = Enum.ScaleType.Slice,
+                SliceCenter = RectNew(21, 21, 79, 79),
+                ZIndex = 89
+            })
+            Items["Shadow"]:AddToTheme({ImageColor3 = "Accent"})
+
+            Instances:Create("UICorner", {
+                Parent = Items["Frame"].Instance,
+                CornerRadius = UDimNew(0, 5)
+            })
+
+            Items["Stroke"] = Instances:Create("UIStroke", {
+                Parent = Items["Frame"].Instance,
+                Color = Library.Theme.Accent,
+                Thickness = 1,
+                Transparency = 0.08,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+            Items["Stroke"]:AddToTheme({Color = "Accent"})
+
+            Items["Header"] = Instances:Create("Frame", {
+                Parent = Items["Frame"].Instance,
+                Name = "\0",
+                Size = UDim2New(1, 0, 0, 28),
+                BorderSizePixel = 0,
+                BackgroundColor3 = Library.Theme.Inline,
+                ZIndex = 91
+            })
+            Items["Header"]:AddToTheme({BackgroundColor3 = "Inline"})
+
+            Instances:Create("UICorner", {
+                Parent = Items["Header"].Instance,
+                CornerRadius = UDimNew(0, 5)
+            })
+
+            Instances:Create("Frame", {
+                Parent = Items["Header"].Instance,
+                Name = "\0",
+                AnchorPoint = Vector2New(0, 1),
+                Position = UDim2New(0, 0, 1, 0),
+                Size = UDim2New(1, 0, 0, 5),
+                BorderSizePixel = 0,
+                BackgroundColor3 = Library.Theme.Inline,
+                ZIndex = 91
+            }):AddToTheme({BackgroundColor3 = "Inline"})
+
+            Items["Title"] = Instances:Create("TextLabel", {
+                Parent = Items["Header"].Instance,
+                Name = "\0",
+                Position = UDim2New(0, 10, 0, 0),
+                Size = UDim2New(1, -42, 1, 0),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                Text = "KEYBIND SETTINGS",
+                TextColor3 = Library.Theme.Text,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                FontFace = Library.Font,
+                TextSize = 11,
+                ZIndex = 93
+            })
+            Items["Title"]:AddToTheme({TextColor3 = "Text"})
+
+            Items["Close"] = Instances:Create("TextButton", {
+                Parent = Items["Header"].Instance,
+                Name = "\0",
+                Position = UDim2New(1, -27, 0, 4),
+                Size = UDim2New(0, 22, 0, 20),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                AutoButtonColor = false,
+                Text = "×",
+                TextColor3 = Library.Theme["Dark Text"],
+                FontFace = Library.Font,
+                TextSize = 15,
+                ZIndex = 94
+            })
+            Items["Close"]:AddToTheme({TextColor3 = "Dark Text"})
+
+            local function CreateDivider(Y)
+                local Divider = Instances:Create("Frame", {
+                    Parent = Items["Frame"].Instance,
+                    Name = "\0",
+                    Position = UDim2New(0, 9, 0, Y),
+                    Size = UDim2New(1, -18, 0, 1),
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = Library.Theme.Outline,
+                    BackgroundTransparency = 0.68,
+                    ZIndex = 91
+                })
+                Divider:AddToTheme({BackgroundColor3 = "Outline"})
+            end
+
+            local function CreateLabel(Text, Y)
+                local Label = Instances:Create("TextLabel", {
+                    Parent = Items["Frame"].Instance,
+                    Name = "\0",
+                    Position = UDim2New(0, 10, 0, Y),
+                    Size = UDim2New(0, 78, 0, 27),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    Text = Text,
+                    TextColor3 = Library.Theme["Dark Text"],
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    FontFace = Library.Font,
+                    TextSize = 11,
+                    ZIndex = 92
+                })
+                Label:AddToTheme({TextColor3 = "Dark Text"})
+                return Label
+            end
+
+            local function CreateValueButton(Name, Y, Text)
+                local Button = Instances:Create("TextButton", {
+                    Parent = Items["Frame"].Instance,
+                    Name = "\0",
+                    Position = UDim2New(0, 90, 0, Y + 4),
+                    Size = UDim2New(1, -100, 0, 19),
+                    BorderSizePixel = 0,
+                    AutoButtonColor = false,
+                    BackgroundColor3 = Library.Theme.Element,
+                    BackgroundTransparency = 0.42,
+                    Text = Text,
+                    TextColor3 = Library.Theme.Text,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    FontFace = Library.Font,
+                    TextSize = 10,
+                    ZIndex = 93
+                })
+                Button:AddToTheme({BackgroundColor3 = "Element", TextColor3 = "Text"})
+
+                Instances:Create("UICorner", {
+                    Parent = Button.Instance,
+                    CornerRadius = UDimNew(0, 4)
+                })
+
+                Instances:Create("UIPadding", {
+                    Parent = Button.Instance,
+                    PaddingLeft = UDimNew(0, 7),
+                    PaddingRight = UDimNew(0, 7)
+                })
+
+                Items[Name] = Button
+                return Button
+            end
+
+            CreateLabel("Key", 28)
+            CreateLabel("Mode", 56)
+            CreateLabel("ON Value", 84)
+            CreateLabel("OFF Value", 112)
+            CreateLabel("Name", 140)
+
+            CreateDivider(55)
+            CreateDivider(83)
+            CreateDivider(111)
+            CreateDivider(139)
+
+            CreateValueButton("KeyValue", 28, "None")
+            CreateValueButton("ModeValue", 56, "Off")
+
+            Items["ModeArrow"] = Instances:Create("TextLabel", {
+                Parent = Items["ModeValue"].Instance,
+                Name = "\0",
+                AnchorPoint = Vector2New(1, 0.5),
+                Position = UDim2New(1, -5, 0.5, 0),
+                Size = UDim2New(0, 12, 1, 0),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                Text = "⌄",
+                TextColor3 = Library.Theme.Text,
+                FontFace = Library.Font,
+                TextSize = 12,
+                ZIndex = 95
+            })
+            Items["ModeArrow"]:AddToTheme({TextColor3 = "Text"})
+
+            Items["ModeMenu"] = Instances:Create("Frame", {
+                Parent = Items["Frame"].Instance,
+                Name = "\0",
+                Position = UDim2New(0, 90, 0, 80),
+                Size = UDim2New(1, -100, 0, 82),
+                Visible = false,
+                BorderSizePixel = 0,
+                BackgroundColor3 = Library.Theme.Inline,
+                ZIndex = 100
+            })
+            Items["ModeMenu"]:AddToTheme({BackgroundColor3 = "Inline"})
+
+            Instances:Create("UICorner", {
+                Parent = Items["ModeMenu"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+
+            Instances:Create("UIStroke", {
+                Parent = Items["ModeMenu"].Instance,
+                Color = Library.Theme.Accent,
+                Thickness = 1,
+                Transparency = 0.18
+            }):AddToTheme({Color = "Accent"})
+
+            Instances:Create("UIListLayout", {
+                Parent = Items["ModeMenu"].Instance,
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+
+            for Index, Mode in {"Off", "Toggle", "Hold", "Always"} do
+                local Option = Instances:Create("TextButton", {
+                    Parent = Items["ModeMenu"].Instance,
+                    Name = "\0",
+                    Size = UDim2New(1, 0, 0, Index == 4 and 22 or 20),
+                    BorderSizePixel = 0,
+                    AutoButtonColor = false,
+                    BackgroundTransparency = 1,
+                    BackgroundColor3 = Library.Theme.Accent,
+                    Text = Mode,
+                    TextColor3 = Library.Theme["Dark Text"],
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    FontFace = Library.Font,
+                    TextSize = 10,
+                    ZIndex = 101
+                })
+                Option:AddToTheme({BackgroundColor3 = "Accent", TextColor3 = "Dark Text"})
+
+                Instances:Create("UIPadding", {
+                    Parent = Option.Instance,
+                    PaddingLeft = UDimNew(0, 7)
+                })
+
+                Option:OnHover(function()
+                    Option:Tween(nil, {BackgroundTransparency = 0.78})
+                end)
+
+                Option:OnHoverLeave(function()
+                    Option:Tween(nil, {BackgroundTransparency = 1})
+                end)
+
+                Option:Connect("MouseButton1Down", function()
+                    local Keybind = Editor.Current
+                    if not Keybind then
+                        return
+                    end
+
+                    Keybind.Mode = Mode
+                    if Mode == "Always" then
+                        Keybind.Toggled = true
+                    elseif Mode == "Off" or Mode == "Hold" then
+                        Keybind.Toggled = false
+                    end
+
+                    Keybind:SetMode(Mode)
+                    Items["ModeMenu"].Instance.Visible = false
+                    Editor:Refresh()
+                end)
+            end
+
+            local function CreateSwitch(Name, Y)
+                local Button = Instances:Create("TextButton", {
+                    Parent = Items["Frame"].Instance,
+                    Name = "\0",
+                    AnchorPoint = Vector2New(1, 0.5),
+                    Position = UDim2New(1, -10, 0, Y + 13),
+                    Size = UDim2New(0, 31, 0, 17),
+                    BorderSizePixel = 0,
+                    AutoButtonColor = false,
+                    BackgroundColor3 = Library.Theme.Element,
+                    Text = "",
+                    ZIndex = 93
+                })
+                Button:AddToTheme({BackgroundColor3 = "Element"})
+
+                Instances:Create("UICorner", {
+                    Parent = Button.Instance,
+                    CornerRadius = UDimNew(1, 0)
+                })
+
+                local Knob = Instances:Create("Frame", {
+                    Parent = Button.Instance,
+                    Name = "\0",
+                    AnchorPoint = Vector2New(0.5, 0.5),
+                    Position = UDim2New(0, 8, 0.5, 0),
+                    Size = UDim2New(0, 11, 0, 11),
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = FromRGB(238, 238, 242),
+                    ZIndex = 94
+                })
+
+                Instances:Create("UICorner", {
+                    Parent = Knob.Instance,
+                    CornerRadius = UDimNew(1, 0)
+                })
+
+                Items[Name] = Button
+                Items[Name .. "Knob"] = Knob
+            end
+
+            CreateSwitch("OnSwitch", 84)
+            CreateSwitch("OffSwitch", 112)
+
+            Items["NameValue"] = Instances:Create("TextBox", {
+                Parent = Items["Frame"].Instance,
+                Name = "\0",
+                Position = UDim2New(0, 90, 0, 144),
+                Size = UDim2New(1, -100, 0, 19),
+                BorderSizePixel = 0,
+                BackgroundColor3 = Library.Theme.Element,
+                BackgroundTransparency = 0.42,
+                ClearTextOnFocus = false,
+                MultiLine = false,
+                Active = true,
+                Selectable = true,
+                Text = "",
+                PlaceholderText = "Feature name",
+                TextColor3 = Library.Theme.Text,
+                PlaceholderColor3 = Library.Theme["Dark Text"],
+                TextXAlignment = Enum.TextXAlignment.Left,
+                FontFace = Library.Font,
+                TextSize = 10,
+                ZIndex = 93
+            })
+            Items["NameValue"]:AddToTheme({BackgroundColor3 = "Element", TextColor3 = "Text", PlaceholderColor3 = "Dark Text"})
+
+            Instances:Create("UICorner", {
+                Parent = Items["NameValue"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+
+            Instances:Create("UIPadding", {
+                Parent = Items["NameValue"].Instance,
+                PaddingLeft = UDimNew(0, 7),
+                PaddingRight = UDimNew(0, 7)
+            })
+
+            local function UpdateSwitch(Button, Knob, State)
+                Button:ChangeItemTheme({BackgroundColor3 = State and "Accent" or "Element"})
+                Button:Tween(nil, {BackgroundColor3 = Library.Theme[State and "Accent" or "Element"]})
+                Knob:Tween(nil, {Position = State and UDim2New(1, -8, 0.5, 0) or UDim2New(0, 8, 0.5, 0)})
+            end
+
+            function Editor:Refresh()
+                local Keybind = self.Current
+                if not Keybind then
+                    return
+                end
+
+                Items["KeyValue"].Instance.Text = Keybind.Picking and "Press a key" or Keybind.Value
+                Items["ModeValue"].Instance.Text = Keybind.Mode
+                Items["NameValue"].Instance.Text = Keybind.Name
+                UpdateSwitch(Items["OnSwitch"], Items["OnSwitchKnob"], Keybind.OnValue)
+                UpdateSwitch(Items["OffSwitch"], Items["OffSwitchKnob"], Keybind.OffValue)
+            end
+
+            function Editor:SetOpen(State, Keybind, Source)
+                if State and Keybind then
+                    self.Current = Keybind
+                    self.Source = Source
+                end
+
+                self.IsOpen = State == true and self.Current ~= nil
+
+                if self.IsOpen then
+                    for _, OpenFrame in Library.OpenFrames do
+                        if OpenFrame ~= self and OpenFrame.SetOpen then
+                            OpenFrame:SetOpen(false)
+                        end
+                    end
+
+                    Library.OpenFrames[self] = self
+                    Items["Frame"].Instance.Parent = Library.Holder.Instance
+                    Items["Frame"].Instance.Visible = true
+
+                    local Viewport = Camera.ViewportSize
+                    local SourceInstance = self.Source and (self.Source.Instance or self.Source)
+                    local X = UserInputService:GetMouseLocation().X
+                    local Y = UserInputService:GetMouseLocation().Y + 5
+
+                    if SourceInstance and SourceInstance.Parent then
+                        X = SourceInstance.AbsolutePosition.X + SourceInstance.AbsoluteSize.X - 222
+                        Y = SourceInstance.AbsolutePosition.Y + SourceInstance.AbsoluteSize.Y + 5
+
+                        if Y + 168 > Viewport.Y then
+                            Y = SourceInstance.AbsolutePosition.Y - 173
+                        end
+                    end
+
+                    X = MathClamp(X, 4, math.max(4, Viewport.X - 226))
+                    Y = MathClamp(Y, 4, math.max(4, Viewport.Y - 172))
+                    Items["Frame"].Instance.Position = UDim2New(0, X, 0, Y)
+                    self:Refresh()
+                else
+                    Library.OpenFrames[self] = nil
+                    Items["ModeMenu"].Instance.Visible = false
+                    Items["Frame"].Instance.Visible = false
+                    Items["Frame"].Instance.Parent = Library.UnusedHolder.Instance
+                end
+            end
+
+            Items["Close"]:Connect("MouseButton1Down", function()
+                Editor:SetOpen(false)
+            end)
+
+            Items["KeyValue"]:Connect("MouseButton1Down", function()
+                if Editor.Current then
+                    Editor.Current:BeginPicking(Items["KeyValue"])
+                end
+            end)
+
+            Items["ModeValue"]:Connect("MouseButton1Down", function()
+                Items["ModeMenu"].Instance.Visible = not Items["ModeMenu"].Instance.Visible
+            end)
+
+            Items["OnSwitch"]:Connect("MouseButton1Down", function()
+                if Editor.Current then
+                    Editor.Current.OnValue = not Editor.Current.OnValue
+                    Editor.Current:SetMode(Editor.Current.Mode)
+                    Editor:Refresh()
+                end
+            end)
+
+            Items["OffSwitch"]:Connect("MouseButton1Down", function()
+                if Editor.Current then
+                    Editor.Current.OffValue = not Editor.Current.OffValue
+                    Editor.Current:SetMode(Editor.Current.Mode)
+                    Editor:Refresh()
+                end
+            end)
+
+            Library:Connect(Items["NameValue"].Instance.FocusLost, function()
+                if not Editor.Current then
+                    return
+                end
+
+                local NewName = Items["NameValue"].Instance.Text
+                if NewName ~= "" then
+                    Editor.Current.Name = NewName
+                    Editor.Current:SetMode(Editor.Current.Mode)
+                    Library:RefreshKeybindList()
+                else
+                    Items["NameValue"].Instance.Text = Editor.Current.Name
+                end
+            end)
+
+            Library:Connect(UserInputService.InputBegan, function(Input)
+                if not Editor.IsOpen then
+                    return
+                end
+
+                if Input.KeyCode == Enum.KeyCode.Escape then
+                    Editor:SetOpen(false)
+                    return
+                end
+
+                if Input.UserInputType == Enum.UserInputType.MouseButton1
+                    and not Library:IsMouseOverFrame(Items["Frame"]) then
+                    Editor:SetOpen(false)
+                end
+            end)
+
+            self.KeybindEditor = Editor
+            return Editor
         end
 
         Library.Notification = function(self, Name, Icon, Duration)
@@ -1972,8 +2532,7 @@ local Library do
             local KeybindList = {
                 Items = { },
                 Rows = { },
-                Visible = true,
-                GlowEnabled = true
+                Visible = true
             }
 
             local Items = KeybindList.Items
@@ -2144,12 +2703,6 @@ local Library do
                 Items["Frame"].Instance.Visible = self.Visible
             end
 
-            function KeybindList:SetGlow(State)
-                self.GlowEnabled = State == true
-                Items["Shadow"].Instance.Visible = self.GlowEnabled
-                Items["Stroke"].Instance.Transparency = self.GlowEnabled and 0.12 or 0.42
-            end
-
             function KeybindList:Refresh()
                 local VisibleCount = 0
                 local ActiveCount = 0
@@ -2166,7 +2719,6 @@ local Library do
 
                         Row.Items["Name"].Instance.Text = Keybind.Name
                         Row.Items["Key"].Instance.Text = Keybind.Value
-                        Row.Items["Accent"].Instance.BackgroundTransparency = Active and 0 or 0.78
                         Row.Items["KeyBox"].Instance.BackgroundTransparency = Active and 0.78 or 0.9
 
                         Row.Items["Name"]:ChangeItemTheme({TextColor3 = Active and "Text" or "Dark Text"})
@@ -2240,17 +2792,6 @@ local Library do
                 Parent = RowItems["Row"].Instance,
                 CornerRadius = UDimNew(0, 3)
             })
-
-            RowItems["Accent"] = Instances:Create("Frame", {
-                Parent = RowItems["Row"].Instance,
-                Name = "\0",
-                Size = UDim2New(0, 2, 1, -8),
-                Position = UDim2New(0, 0, 0, 4),
-                BorderSizePixel = 0,
-                BackgroundColor3 = Library.Theme.Accent,
-                ZIndex = 84
-            })
-            RowItems["Accent"]:AddToTheme({BackgroundColor3 = "Accent"})
 
             RowItems["Name"] = Instances:Create("TextLabel", {
                 Parent = RowItems["Row"].Instance,
@@ -3567,7 +4108,8 @@ local Library do
                 Default = Data.Default or Data.default or false,
                 Callback = Data.Callback or Data.callback or function() end,
 
-                Value = false
+                Value = false,
+                KeybindObject = nil
             }
 
             local Items = { } do 
@@ -3752,6 +4294,10 @@ local Library do
             function Toggle:Keybind(Data)
                 Data = Data or { }
 
+                if Toggle.KeybindObject then
+                    return Toggle.KeybindObject
+                end
+
                 local Keybind = {
                     Window = Toggle.Window,
                     Page = Toggle.Page,
@@ -3759,20 +4305,30 @@ local Library do
 
                     Flag = Data.Flag or Data.flag or Library:NextFlag(),
                     Default = Data.Default or Data.default or Enum.KeyCode.E,
-                    Callback = Data.Callback or Data.callback or function() end,
-                    Mode = Data.Mode or Data.mode or "Toggle"
+                    Callback = Data.Callback or Data.callback or function(Value)
+                        Toggle:Set(Value)
+                    end,
+                    Mode = Data.Mode or Data.mode or "Toggle",
+                    OnValue = Data.OnValue ~= false,
+                    OffValue = Data.OffValue == true
                 }
 
                 local NewKeybind, KeybindItems = Library:CreateKeybind({
                     Parent = Items["SubElements"],
                     Name = Data.Name or Data.name or Toggle.Name,
+                    Source = Items["Toggle"],
                     Page = Keybind.Page,
                     Section = Keybind.Section,
                     Flag = Keybind.Flag,
                     Default = Keybind.Default,
                     Mode = Keybind.Mode,
-                    Callback = Keybind.Callback
+                    Callback = Keybind.Callback,
+                    OnValue = Keybind.OnValue,
+                    OffValue = Keybind.OffValue
                 })
+
+                NewKeybind.Editor = Library:CreateKeybindEditor()
+                Toggle.KeybindObject = NewKeybind
 
                 return NewKeybind
             end
@@ -3792,6 +4348,26 @@ local Library do
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                     Toggle:Set(not Toggle.Value)
                 end
+            end)
+
+            Items["Toggle"]:Connect("MouseButton2Down", function()
+                local Keybind = Toggle.KeybindObject
+
+                if not Keybind then
+                    Keybind = Toggle:Keybind({
+                        Name = Toggle.Name,
+                        Flag = Toggle.Flag .. "/Keybind",
+                        Default = Enum.KeyCode.Backspace,
+                        Mode = "Off",
+                        Callback = function(Value)
+                            Toggle:Set(Value)
+                        end
+                    })
+                end
+
+                local Editor = Keybind.Editor
+                local ShouldOpen = not (Editor.IsOpen and Editor.Current == Keybind)
+                Editor:SetOpen(ShouldOpen, Keybind, Items["Toggle"])
             end)
 
             Toggle:Set(Toggle.Default)
@@ -4794,6 +5370,7 @@ local Library do
                 local NewKeybind, KeybindItems = Library:CreateKeybind({
                     Parent = Items["SubElements"],
                     Name = Data.Name or Data.name or Label.Name,
+                    Source = Items["Label"],
                     Page = Keybind.Page,
                     Section = Keybind.Section,
                     Flag = Keybind.Flag,
@@ -4801,6 +5378,8 @@ local Library do
                     Mode = Keybind.Mode,
                     Callback = Keybind.Callback
                 })
+
+                NewKeybind.Editor = Library:CreateKeybindEditor()
 
                 return NewKeybind
             end
@@ -5192,17 +5771,6 @@ local Library do
                 Callback = function(Value)
                     if Library.KeybindList then
                         Library.KeybindList:SetVisible(Value)
-                    end
-                end
-            })
-
-            SettingsSection:Toggle({
-                Name = "Keybind List Glow",
-                Flag = "Keybind List Glow",
-                Default = true,
-                Callback = function(Value)
-                    if Library.KeybindList then
-                        Library.KeybindList:SetGlow(Value)
                     end
                 end
             })
