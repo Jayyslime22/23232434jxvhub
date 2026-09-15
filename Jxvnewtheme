@@ -1741,6 +1741,19 @@ local Library do
                         Keybind:SetMode("Toggle")
                     end
 
+                    if Key.Toggled ~= nil then
+                        Keybind.Toggled = Key.Toggled == true
+                    end
+
+                    Library.Flags[Keybind.Flag] = {
+                        Mode = Keybind.Mode,
+                        Key = Keybind.Key,
+                        Toggled = Keybind.Toggled,
+                        OnValue = Keybind.OnValue,
+                        OffValue = Keybind.OffValue,
+                        Name = Keybind.Name
+                    }
+
                     local KeyString = IsNone and "None" or Keys[Keybind.Key] or StringGSub(tostring(RealKey), "Enum.", "") or RealKey
                     local TextToDisplay = KeyString and StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "") or "None"
 
