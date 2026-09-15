@@ -1,4 +1,3 @@
-
 if getgenv().Library then
     if getgenv().Library.SaveCurrentConfig then
         pcall(getgenv().Library.SaveCurrentConfig, getgenv().Library)
