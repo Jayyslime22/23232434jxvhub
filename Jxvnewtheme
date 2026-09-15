@@ -1,4 +1,7 @@
 if getgenv().Library then
+    if getgenv().Library.SaveCurrentConfig then
+        pcall(getgenv().Library.SaveCurrentConfig, getgenv().Library)
+    end
     getgenv().Library:Unload()
 end
 
@@ -847,6 +850,20 @@ local Library do
                     Config[Index] = Value
                 end
             end
+
+            -- Store the live keybind state directly as well. This prevents callbacks
+            -- or other flag updates during loading from losing the saved Active state.
+            Config.__KeybindStates = {}
+            for Keybind in Library.KeybindEntries do
+                if Keybind.Flag then
+                    Config.__KeybindStates[Keybind.Flag] = {
+                        Toggled = Keybind.Toggled == true,
+                        Mode = Keybind.Mode,
+                        Key = tostring(Keybind.Key),
+                        Name = Keybind.Name
+                    }
+                end
+            end
         end)
 
         return HttpService:JSONEncode(Config)
@@ -857,6 +874,10 @@ local Library do
 
         local Success, Result = Library:SafeCall(function()
             for Index, Value in Decoded do 
+                if Index == "__KeybindStates" then
+                    continue
+                end
+
                 local SetFunction = Library.SetFlags[Index]
 
                 if not SetFunction then
@@ -870,6 +891,44 @@ local Library do
                 else
                     SetFunction(Value)
                 end
+            end
+
+            -- Restore the actual live keybind state after every normal config flag
+            -- has loaded, so a parent callback cannot overwrite it.
+            local SavedKeybindStates = Decoded.__KeybindStates
+            if type(SavedKeybindStates) == "table" then
+                for Keybind in Library.KeybindEntries do
+                    local Saved = SavedKeybindStates[Keybind.Flag]
+                    if Saved then
+                        if Saved.Mode then
+                            Keybind.Mode = Saved.Mode
+                        end
+                        if Saved.Key then
+                            Keybind.Key = Saved.Key
+                        end
+                        if Saved.Name and Saved.Name ~= "" then
+                            Keybind.Name = Saved.Name
+                        end
+                        if Saved.Toggled ~= nil then
+                            Keybind.Toggled = Saved.Toggled == true
+                        end
+
+                        Library.Flags[Keybind.Flag] = {
+                            Mode = Keybind.Mode,
+                            Key = Keybind.Key,
+                            Toggled = Keybind.Toggled,
+                            OnValue = Keybind.OnValue,
+                            OffValue = Keybind.OffValue,
+                            Name = Keybind.Name
+                        }
+
+                        if Keybind.Callback and not Keybind.Initializing then
+                            local Output = Keybind.Toggled and Keybind.OnValue or Keybind.OffValue
+                            Library:SafeCall(Keybind.Callback, Output)
+                        end
+                    end
+                end
+                Library:RefreshKeybindList()
             end
         end)
 
@@ -5814,6 +5873,19 @@ local Library do
             local ConfigName
             local ConfigSelected
 
+            -- Keep the currently selected config available outside this section so it
+            -- can be saved automatically when the player leaves or teleports.
+            Library.CurrentConfig = nil
+            Library.SaveCurrentConfig = function(self)
+                local Selected = self.CurrentConfig
+                if Selected and Selected ~= "" then
+                    local Path = self.Folders.Configs .. "/" .. Selected .. ".json"
+                    pcall(function()
+                        writefile(Path, self:GetConfig())
+                    end)
+                end
+            end
+
             local ConfigsDropdown = ConfigsSection:Dropdown({
                 Name = "Configs", 
                 Flag = "Configs",
@@ -5822,6 +5894,7 @@ local Library do
                 MaxSize = 120,
                 Callback = function(Value)
                     ConfigSelected = Value
+                    Library.CurrentConfig = Value
                 end
             })
 
@@ -5858,11 +5931,25 @@ local Library do
             ConfigsSection:Button({
                 Name = "Save",
                 Callback = function()
-                    if ConfigSelected and ConfigSelected ~= "" then
-                        writefile(Library.Folders.Configs .. "/" .. ConfigSelected..".json", Library:GetConfig())
-                    end
+                    Library:SaveCurrentConfig()
                 end
             })
+
+            -- Save the active config before leaving/teleporting so recent changes
+            -- are not lost if the user forgets to press Save.
+            local function AutoSaveConfig()
+                Library:SaveCurrentConfig()
+            end
+
+            Library:Connect(LocalPlayer.OnTeleport, function()
+                AutoSaveConfig()
+            end)
+
+            Library:Connect(Players.PlayerRemoving, function(Player)
+                if Player == LocalPlayer then
+                    AutoSaveConfig()
+                end
+            end)
 
             ConfigsSection:Button({
                 Name = "Delete",
@@ -5978,3 +6065,4 @@ end
 
 getgenv().Library = Library
 return Library
+```
