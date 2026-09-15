@@ -1,3 +1,4 @@
+
 if getgenv().Library then
     getgenv().Library:Unload()
 end
@@ -94,6 +95,7 @@ local Library do
 
         KeybindEntries = { },
         KeybindList = nil,
+        ShowKeybindList = true,
         KeybindEditor = nil,
 
         SetFlags = { },
@@ -1805,20 +1807,12 @@ local Library do
                     return
                 end
 
-                if tostring(Input.KeyCode) == Keybind.Key then
-                    if Keybind.Mode == "Toggle" then 
+                local Key = Keybind.Key
+                if tostring(Input.KeyCode) == Key or tostring(Input.UserInputType) == Key then
+                    local Mode = Keybind.Mode
+                    if Mode == "Toggle" then 
                         Keybind:Press()
-                    elseif Keybind.Mode == "Hold" then 
-                        Keybind:Press(true)
-                    elseif Keybind.Mode == "Always" then 
-                        Keybind:Press(true)
-                    end
-                elseif tostring(Input.UserInputType) == Keybind.Key then
-                    if Keybind.Mode == "Toggle" then 
-                        Keybind:Press()
-                    elseif Keybind.Mode == "Hold" then 
-                        Keybind:Press(true)
-                    elseif Keybind.Mode == "Always" then 
+                    elseif Mode == "Hold" or Mode == "Always" then 
                         Keybind:Press(true)
                     end
                 end
@@ -1841,16 +1835,12 @@ local Library do
                     return
                 end
 
-                if tostring(Input.KeyCode) == Keybind.Key then
-                    if Keybind.Mode == "Hold" then 
+                local Key = Keybind.Key
+                if tostring(Input.KeyCode) == Key or tostring(Input.UserInputType) == Key then
+                    local Mode = Keybind.Mode
+                    if Mode == "Hold" then 
                         Keybind:Press(false)
-                    elseif Keybind.Mode == "Always" then 
-                        Keybind:Press(true)
-                    end
-                elseif tostring(Input.UserInputType) == Keybind.Key then
-                    if Keybind.Mode == "Hold" then 
-                        Keybind:Press(false)
-                    elseif Keybind.Mode == "Always" then 
+                    elseif Mode == "Always" then 
                         Keybind:Press(true)
                     end
                 end
@@ -2582,7 +2572,7 @@ local Library do
             local KeybindList = {
                 Items = { },
                 Rows = { },
-                Visible = true
+                Visible = self.ShowKeybindList ~= false
             }
 
             local Items = KeybindList.Items
@@ -2770,63 +2760,109 @@ local Library do
             function KeybindList:SetVisible(State)
                 self.Visible = State == true
                 Items["Frame"].Instance.Visible = self.Visible
+
+                if self.Visible then
+                    self:Refresh()
+                end
             end
 
             function KeybindList:Refresh()
                 local VisibleCount = 0
                 local ActiveCount = 0
+                local Theme = Library.Theme
 
                 for Keybind, Row in Library.KeybindEntries do
+                    local RowItems = Row.Items
                     local Assigned = Keybind.Value ~= "" and Keybind.Value ~= "None"
-                    local Active = Keybind.Toggled or Keybind.Mode == "Always"
+                    local Active = Keybind.Toggled == true and Keybind.Mode ~= "Off"
 
-                    Row.Items["Row"].Instance.Visible = Assigned
+                    if Row._Assigned ~= Assigned then
+                        RowItems["Row"].Instance.Visible = Assigned
+                        Row._Assigned = Assigned
+                    end
 
                     if Assigned then
                         VisibleCount += 1
                         ActiveCount += Active and 1 or 0
 
-                        Row.Items["Name"].Instance.Text = Keybind.Name
-                        Row.Items["Key"].Instance.Text = Keybind.Value
-                        Row.Items["KeyBox"].Instance.BackgroundTransparency = Active and 0.78 or 0.9
+                        local Name = Keybind.Name
+                        local Value = Keybind.Value
+                        local NameItem = RowItems["Name"]
+                        local KeyItem = RowItems["Key"]
 
-                        Row.Items["Name"]:ChangeItemTheme({TextColor3 = Active and "Text" or "Dark Text"})
-                        Row.Items["Name"]:Tween(nil, {TextColor3 = Library.Theme[Active and "Text" or "Dark Text"]})
-                        Row.Items["Name"].Instance.TextTransparency = Active and 0 or 0.24
-                        Row.Items["Key"]:ChangeItemTheme({TextColor3 = Active and "Text" or "Dark Text"})
-                        Row.Items["Key"]:Tween(nil, {TextColor3 = Library.Theme[Active and "Text" or "Dark Text"]})
-                        Row.Items["Key"].Instance.TextTransparency = Active and 0 or 0.18
+                        if Row._Name ~= Name then
+                            NameItem.Instance.Text = Name
+                            Row._Name = Name
+                        end
 
-                        task.defer(function()
-                            if Row.Items["Key"].Instance.Parent then
-                                Row.Items["KeyBox"].Instance.Size = UDim2New(0, MathClamp(Row.Items["Key"].Instance.TextBounds.X + 14, 34, 72), 0, 18)
-                            end
-                        end)
+                        if Row._Value ~= Value then
+                            KeyItem.Instance.Text = Value
+                            Row._Value = Value
+
+                            task.defer(function()
+                                if KeyItem.Instance.Parent then
+                                    RowItems["KeyBox"].Instance.Size = UDim2New(0, MathClamp(KeyItem.Instance.TextBounds.X + 14, 34, 72), 0, 18)
+                                end
+                            end)
+                        end
+
+                        if Row._Active ~= Active then
+                            local TextColorName = Active and "Text" or "Dark Text"
+                            local TextColor = Theme[TextColorName]
+
+                            RowItems["KeyBox"].Instance.BackgroundTransparency = Active and 0.78 or 0.9
+
+                            NameItem:ChangeItemTheme({TextColor3 = TextColorName})
+                            NameItem:Tween(nil, {TextColor3 = TextColor})
+                            NameItem.Instance.TextTransparency = Active and 0 or 0.24
+                            KeyItem:ChangeItemTheme({TextColor3 = TextColorName})
+                            KeyItem:Tween(nil, {TextColor3 = TextColor})
+                            KeyItem.Instance.TextTransparency = Active and 0 or 0.18
+
+                            Row._Active = Active
+                        end
                     end
                 end
 
-                Items["Empty"].Instance.Visible = VisibleCount == 0
-                Items["Count"].Instance.Text = tostring(ActiveCount) .. " active"
+                local EmptyVisible = VisibleCount == 0
+                if Items["Empty"].Instance.Visible ~= EmptyVisible then
+                    Items["Empty"].Instance.Visible = EmptyVisible
+                end
+
+                local CountText = tostring(ActiveCount) .. " active"
+                if Items["Count"].Instance.Text ~= CountText then
+                    Items["Count"].Instance.Text = CountText
+                end
+
+                Items["Frame"].Instance.Visible = self.Visible
 
                 local ContentHeight = VisibleCount > 0 and (VisibleCount * 26 + 8) or 32
                 local BodyHeight = MathClamp(ContentHeight, 32, 190)
-                Items["Body"].Instance.CanvasSize = UDim2New(0, 0, 0, ContentHeight)
-                Items["Body"].Instance.Size = UDim2New(1, 0, 0, BodyHeight)
+                local Body = Items["Body"].Instance
+
+                if Body.CanvasSize.Y.Offset ~= ContentHeight then
+                    Body.CanvasSize = UDim2New(0, 0, 0, ContentHeight)
+                end
+
+                if Body.Size.Y.Offset ~= BodyHeight then
+                    Body.Size = UDim2New(1, 0, 0, BodyHeight)
+                end
+
                 local ListHeight = 34 + BodyHeight
-                Items["Frame"]:Tween(TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    Size = UDim2New(0, 218, 0, ListHeight)
-                })
+                local Frame = Items["Frame"].Instance
+                if Frame.Size.Y.Offset ~= ListHeight then
+                    Items["Frame"]:Tween(TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Size = UDim2New(0, 218, 0, ListHeight)
+                    })
+                end
 
                 local Viewport = Camera.ViewportSize
-                local CurrentPosition = Items["Frame"].Instance.Position
-                local SafePosition = UDim2New(
-                    0,
-                    MathClamp(CurrentPosition.X.Offset, 0, math.max(0, Viewport.X - 218)),
-                    0,
-                    MathClamp(CurrentPosition.Y.Offset, 0, math.max(0, Viewport.Y - ListHeight))
-                )
+                local CurrentPosition = Frame.Position
+                local SafeX = MathClamp(CurrentPosition.X.Offset, 0, math.max(0, Viewport.X - 218))
+                local SafeY = MathClamp(CurrentPosition.Y.Offset, 0, math.max(0, Viewport.Y - ListHeight))
 
-                if SafePosition ~= CurrentPosition then
+                if CurrentPosition.X.Offset ~= SafeX or CurrentPosition.Y.Offset ~= SafeY then
+                    local SafePosition = UDim2New(0, SafeX, 0, SafeY)
                     Items["Frame"]:Tween(TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = SafePosition})
                     getgenv().JXVKeybindListPosition = SafePosition
                 end
@@ -5845,8 +5881,10 @@ local Library do
                 Flag = "Show Keybind List",
                 Default = true,
                 Callback = function(Value)
+                    Library.ShowKeybindList = Value == true
+
                     if Library.KeybindList then
-                        Library.KeybindList:SetVisible(Value)
+                        Library.KeybindList:SetVisible(Library.ShowKeybindList)
                     end
                 end
             })
