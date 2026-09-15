@@ -837,6 +837,7 @@ local Library do
                     Config[Index] = {
                         Key = tostring(Value.Key),
                         Mode = Value.Mode,
+                        Toggled = Value.Toggled == true,
                         OnValue = Value.OnValue,
                         OffValue = Value.OffValue,
                         Name = Value.Name
