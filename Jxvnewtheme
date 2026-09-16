@@ -5904,46 +5904,19 @@ local Library do
                 ["200%"] = 2
             }
 
-            local function NormalizeScale(Value)
-                if ScaleValues[Value] then
-                    return Value
-                end
-
-                if type(Value) == "number" then
-                    local ClosestOption, ClosestDifference = "100%", math.huge
-
-                    for _, Option in ScaleOptions do
-                        local Difference = MathAbs(ScaleValues[Option] - Value)
-                        if Difference < ClosestDifference then
-                            ClosestOption = Option
-                            ClosestDifference = Difference
-                        end
-                    end
-
-                    return ClosestOption
-                end
-
-                return "100%"
-            end
-
-            local UIScaleDropdown = SettingsSection:Dropdown({
+            SettingsSection:Dropdown({
                 Name = "DPI Scale",
                 Flag = "UI Scale",
                 Items = ScaleOptions,
                 Default = "100%",
                 MaxSize = 204,
                 Callback = function(Value)
-                    if Library.UIScale then
-                        Library.UIScale.Instance.Scale = ScaleValues[Value] or 1
+                    local Scale = ScaleValues[Value]
+                    if Library.UIScale and Scale then
+                        Library.UIScale.Instance.Scale = Scale
                     end
                 end
             })
-
-            -- Configs made with the old slider stored a number. Convert those once
-            -- on load so old configs remain usable while new configs save a percent.
-            Library.SetFlags["UI Scale"] = function(Value)
-                UIScaleDropdown:Set(NormalizeScale(Value))
-            end
 
             SettingsSection:Slider({
                 Name = "Fade Time",
