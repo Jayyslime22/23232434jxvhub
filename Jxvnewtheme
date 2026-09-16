@@ -5914,6 +5914,20 @@ local Library do
                     local Scale = ScaleValues[Value]
                     if Library.UIScale and Scale then
                         Library.UIScale.Instance.Scale = Scale
+
+                        task.defer(function()
+                            RunService.RenderStepped:Wait()
+
+                            local MainFrame = Window.Items["MainFrame"].Instance
+                            local ViewportSize = Camera.ViewportSize
+                            local FrameSize = MainFrame.AbsoluteSize
+
+                            MainFrame.AnchorPoint = Vector2New(0, 0)
+                            MainFrame.Position = UDim2New(
+                                0, MathFloor((ViewportSize.X - FrameSize.X) * 0.5),
+                                0, MathFloor((ViewportSize.Y - FrameSize.Y) * 0.5)
+                            )
+                        end)
                     end
                 end
             })
