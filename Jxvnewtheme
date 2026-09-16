@@ -107,6 +107,7 @@ local Library do
         Holder = nil,
         NotifHolder = nil,
         UnusedHolder = nil,
+        UIScale = nil,
 
         Font = nil
     }
@@ -678,6 +679,14 @@ local Library do
         ZIndexBehavior = Enum.ZIndexBehavior.Global,
         DisplayOrder = 2,
         ResetOnSpawn = false
+    })
+
+    -- One shared scale applies to the complete interface on both desktop and touch devices.
+    -- It is controlled through the Settings page and stored in Library.Flags for configs.
+    Library.UIScale = Instances:Create("UIScale", {
+        Parent = Library.Holder.Instance,
+        Name = "\0",
+        Scale = IsMobile and 0.7 or 1
     })
 
     Library.UnusedHolder = Instances:Create("ScreenGui", {
@@ -2975,14 +2984,6 @@ local Library do
             }
 
             local Items = { } do
-                if IsMobile then 
-                    Instances:Create("UIScale", {
-                        Parent = Library.Holder.Instance,
-                        Name = "\0",
-                        Scale = 0.7
-                    })
-                end                    
-                
                 Items["MainFrame"] = Instances:Create("Frame", {
                     Parent = Library.Holder.Instance,
                     Name = "\0",
@@ -5889,6 +5890,21 @@ local Library do
                 Default = false,
                 Callback = function(Value)
                     Window:SetStreamerMode(Value)
+                end
+            })
+
+            SettingsSection:Slider({
+                Name = "UI Scale",
+                Flag = "UI Scale",
+                Default = IsMobile and 0.7 or 1,
+                Min = 0.6,
+                Max = 1.3,
+                Suffix = "x",
+                Decimals = 0.01,
+                Callback = function(Value)
+                    if Library.UIScale then
+                        Library.UIScale.Instance.Scale = Value
+                    end
                 end
             })
 
