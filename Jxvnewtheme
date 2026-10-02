@@ -3750,8 +3750,7 @@ local Library do
                     local UIScale = Library.UIScale.Instance
 
                     local MinScale, MaxScale = 0.6, 1.4
-                    local ScaleSnap = 0.02
-                    local ScaleResponsiveness = 18
+                    local ScaleResponsiveness = 24
 
                     local Dragging = false
                     local InputChanged
@@ -3776,10 +3775,6 @@ local Library do
 
                     local SetScaleImmediate = function(NewScale)
                         NewScale = MathClamp(NewScale, MinScale, MaxScale)
-
-                        if MathAbs(NewScale - 1) <= ScaleSnap then
-                            NewScale = 1
-                        end
 
                         local OldScale = UIScale.Scale
                         if MathAbs(NewScale - OldScale) < 0.0001 then
@@ -3821,7 +3816,7 @@ local Library do
                             local Current = UIScale.Scale
                             local Difference = TargetScale - Current
 
-                            if MathAbs(Difference) < 0.001 then
+                            if MathAbs(Difference) < 0.0001 then
                                 StopScaleSmoothing()
                                 return
                             end
@@ -3835,10 +3830,6 @@ local Library do
                     local SetScaleTarget = function(NewScale, Smooth)
                         NewScale = tonumber(NewScale) or UIScale.Scale
                         NewScale = MathClamp(NewScale, MinScale, MaxScale)
-
-                        if MathAbs(NewScale - 1) <= ScaleSnap then
-                            NewScale = 1
-                        end
 
                         TargetScale = NewScale
                         Library.Flags["UI Scale"] = NewScale * 100
@@ -3854,112 +3845,6 @@ local Library do
                     Library.SetUIScale = function(self, NewScale, Smooth)
                         SetScaleTarget(NewScale, Smooth ~= false)
                     end
-
-                    Items["ScaleHandle"] = Instances:Create("TextButton", {
-                        Parent = MainFrame,
-                        Name = "\0",
-                        AnchorPoint = Vector2New(1, 0),
-                        Position = UDim2New(0, -2, 1, 2),
-                        Size = UDim2New(0, 18, 0, 18),
-                        BackgroundTransparency = 1,
-                        BorderSizePixel = 0,
-                        AutoButtonColor = false,
-                        Text = "",
-                        ZIndex = 100000
-                    })
-
-                    local Pieces = {}
-
-                    local MakePiece = function(Position, Size, Rotation)
-                        local Piece = Instances:Create("Frame", {
-                            Parent = Items["ScaleHandle"].Instance,
-                            Name = "\0",
-                            AnchorPoint = Vector2New(0.5, 0.5),
-                            Position = Position,
-                            Size = Size,
-                            Rotation = Rotation,
-                            BorderSizePixel = 0,
-                            BackgroundTransparency = 0.35,
-                            ZIndex = 100001
-                        })
-
-                        Piece:AddToTheme({BackgroundColor3 = "Text"})
-                        TableInsert(Pieces, Piece)
-                    end
-
-                    -- Cleaner, slightly larger resize indicator.
-                    MakePiece(UDim2New(0, 9, 0, 8), UDim2New(0, 14, 0, 2), -45)
-                    MakePiece(UDim2New(0, 6, 0, 13), UDim2New(0, 8, 0, 2), 0)
-                    MakePiece(UDim2New(0, 3, 0, 10), UDim2New(0, 2, 0, 9), 0)
-
-                    local SetPieces = function(Transparency)
-                        for _, Piece in Pieces do
-                            Piece:Tween(nil, {BackgroundTransparency = Transparency})
-                        end
-                    end
-
-                    Items["ScaleHandle"]:OnHover(function()
-                        SetPieces(0)
-                    end)
-
-                    Items["ScaleHandle"]:OnHoverLeave(function()
-                        if not Dragging then
-                            SetPieces(0.35)
-                        end
-                    end)
-
-                    Items["ScaleHandle"]:Connect("InputBegan", function(Input)
-                        if Input.UserInputType ~= Enum.UserInputType.MouseButton1
-                            and Input.UserInputType ~= Enum.UserInputType.Touch then
-                            return
-                        end
-
-                        Dragging = true
-                        StartMouse = Vector2New(Input.Position.X, Input.Position.Y)
-                        StartScale = TargetScale
-                        StartWidth = MainFrame.Size.X.Offset * StartScale
-                        StartHeight = MainFrame.Size.Y.Offset * StartScale
-
-                        SetPieces(0)
-
-                        if InputChanged then
-                            return
-                        end
-
-                        InputChanged = Input.Changed:Connect(function()
-                            if Input.UserInputState == Enum.UserInputState.End then
-                                Dragging = false
-                                SetPieces(0.35)
-
-                                if InputChanged then
-                                    InputChanged:Disconnect()
-                                    InputChanged = nil
-                                end
-
-                                -- Finish cleanly at the final target value.
-                                StartScaleSmoothing()
-                            end
-                        end)
-                    end)
-
-                    Library:Connect(UserInputService.InputChanged, function(Input)
-                        if not Dragging then
-                            return
-                        end
-
-                        if Input.UserInputType ~= Enum.UserInputType.MouseMovement
-                            and Input.UserInputType ~= Enum.UserInputType.Touch then
-                            return
-                        end
-
-                        local DeltaX = Input.Position.X - StartMouse.X
-                        local DeltaY = Input.Position.Y - StartMouse.Y
-
-                        local Denominator = StartWidth * StartWidth + StartHeight * StartHeight
-                        local Factor = 1 + ((-DeltaX * StartWidth) + (DeltaY * StartHeight)) / Denominator
-
-                        SetScaleTarget(StartScale * Factor, true)
-                    end)
 
                     -- Config support, including old values such as "100%".
                     Library.SetFlags["UI Scale"] = function(Value)
@@ -6138,7 +6023,7 @@ local Library do
                 Min = 60,
                 Max = 140,
                 Suffix = "%",
-                Decimals = 1,
+                Decimals = 0.01,
                 Callback = function(Value)
                     if Library.SetUIScale then
                         Library:SetUIScale(Value / 100, true)
