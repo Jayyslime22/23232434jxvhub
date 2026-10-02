@@ -3419,47 +3419,33 @@ local Library do
                     end
                 end)
 
-                local SearchStepped 
-
                 Items["Input"]:Connect("FocusLost", function()
                     Items["Search"]:Tween(nil, {Size = UDim2New(0, 33, 0, 30)})
                     Items["Input"].Instance.PlaceholderText = ""
                     Items["Input"].Instance.Text = ""
                     Items["Input"].Instance:ReleaseFocus()
-
-                    if SearchStepped then
-                        SearchStepped:Disconnect()
-                        SearchStepped = nil
-                    end
                 end)
 
                 Library:Connect(Items["Input"].Instance:GetPropertyChangedSignal("Text"), function()
+                    local Text = Items["Input"].Instance.Text
+                    local Query = StringLower(Text)
+
                     Items["Search"]:Tween(nil, {
                         Size = UDim2New(0, Items["Input"].Instance.TextBounds.X + 42, 0, 30)
                     })
 
                     local PageSearchData = Library.SearchItems[Library.CurrentPage]
-
                     if not PageSearchData then
-                        return 
+                        return
                     end
-        
-                    SearchStepped = RunService.RenderStepped:Connect(function()
-                        for Index, Value in PageSearchData do 
-                            local Name = Value.Name
-                            local Element = Value.Element
-        
-                            if StringFind(StringLower(Name), StringLower(Items["Input"].Instance.Text)) then
-                                if Items["Input"].Instance.Text ~= "" then 
-                                    Element.Instance.Visible  = true 
-                                else
-                                    Element.Instance.Visible  = true 
-                                end
-                            else
-                                Element.Instance.Visible = false
-                            end
-                        end
-                    end)
+
+                    -- Filter immediately instead of creating a RenderStepped
+                    -- connection on every text change.
+                    for _, Value in PageSearchData do
+                        local Element = Value.Element
+                        local Name = StringLower(Value.Name)
+                        Element.Instance.Visible = Query == "" or StringFind(Name, Query, 1, true) ~= nil
+                    end
                 end)
 
                 local Settings = {
