@@ -4747,6 +4747,7 @@ local Library do
                 Max = Data.Max or Data.max or 100,
                 Suffix = Data.Suffix or Data.suffix or "",
                 Decimals = Data.Decimals or Data.decimals or 1,
+                DisplayMultiplier = Data.DisplayMultiplier or Data.displayMultiplier or 1,
                 Callback = Data.Callback or Data.callback or function() end,
 
                 Value = 0,
@@ -4892,7 +4893,7 @@ local Library do
                 Library.Flags[Slider.Flag] = Slider.Value
 
                 Items["Accent"]:Tween(TweenInfo.new(Library.Tween.Time, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2New((Slider.Value - Slider.Min) / (Slider.Max - Slider.Min), 0, 1, 0)})
-                Items["Value"].Instance.Text = StringFormat("%s%s", Slider.Value, Slider.Suffix)
+                Items["Value"].Instance.Text = StringFormat("%s%s", Slider.Value * Slider.DisplayMultiplier, Slider.Suffix)
 
                 if Slider.Value <= Slider.Min then
                     Items["Dragger"].Instance.Position = UDim2New(1, 10, 0.5, 0)
@@ -6019,14 +6020,15 @@ local Library do
             SettingsSection:Slider({
                 Name = "UI Scale",
                 Flag = "UI Scale",
-                Default = Library.UIScale.Instance.Scale * 100,
-                Min = 60,
-                Max = 140,
+                Default = Library.UIScale.Instance.Scale,
+                Min = 0.6,
+                Max = 1.4,
                 Suffix = "%",
                 Decimals = 0.01,
+                DisplayMultiplier = 100,
                 Callback = function(Value)
                     if Library.SetUIScale then
-                        Library:SetUIScale(Value / 100, true)
+                        Library:SetUIScale(Value, true)
                     end
                 end
             })
