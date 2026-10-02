@@ -452,7 +452,7 @@ local Library do
                 NewY = MathClamp(NewY, 0, math.max(0, UnscaledScreenHeight - UnscaledHeight))
 
                 local NewPosition = UDim2New(0, NewX, 0, NewY)
-                self:Tween(TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = NewPosition})
+                Gui.Position = NewPosition
 
                 if OnMoved then
                     OnMoved(NewPosition)
@@ -631,8 +631,8 @@ local Library do
                     h = Minimum.Y
                 end
             
-                self:Tween(TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2FromOffset(x, y)})
-                self:Tween(TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2FromOffset(w, h)})
+                Gui.Position = UDim2FromOffset(x, y)
+                Gui.Size = UDim2FromOffset(w, h)
             end)
         end
 
@@ -795,7 +795,7 @@ local Library do
     end
 
     Library.Connect = function(self, Event, Callback, Name)
-        Name = Name or StringFormat("connection_number_%s_%s", self.UnnamedConnections + 1, HttpService:GenerateGUID(false))
+        Name = Name or StringFormat("connection_number_%s", self.UnnamedConnections + 1)
 
         local NewConnection = {
             Event = Event,
@@ -804,9 +804,8 @@ local Library do
             Connection = nil
         }
 
-        Library:Thread(function()
-            NewConnection.Connection = Event:Connect(Callback)
-        end)
+        NewConnection.Connection = Event:Connect(Callback)
+        self.UnnamedConnections = self.UnnamedConnections + 1
 
         TableInsert(self.Connections, NewConnection)
         return NewConnection
@@ -5266,6 +5265,38 @@ local Library do
             local Debounce = false 
             local RenderStepped 
 
+            -- OptionHolder is moved to the scaled ScreenGui. AbsolutePosition/AbsoluteSize
+            -- are screen-space pixels, while Position/Size under UIScale use unscaled UI
+            -- coordinates. Convert the dropdown metrics so they stay aligned at every scale.
+            local GetDropdownMetrics = function()
+                local Scale = (Library.UIScale and Library.UIScale.Instance and Library.UIScale.Instance.Scale) or 1
+                if Scale <= 0 then
+                    Scale = 1
+                end
+
+                local Real = Items["RealDropdown"].Instance
+                local Position = Real.AbsolutePosition
+                local Size = Real.AbsoluteSize
+                local HolderPosition = Library.Holder.Instance.AbsolutePosition
+
+                local X = (Position.X - HolderPosition.X) / Scale
+                local Y = (Position.Y - HolderPosition.Y) / Scale
+                local Width = Size.X / Scale
+                local Height = Size.Y / Scale
+
+                return X, Y + Height + (5 / Scale), Width
+            end
+
+            local UpdateOptionHolderPosition = function()
+                if not Dropdown.IsOpen then
+                    return
+                end
+
+                local X, Y, Width = GetDropdownMetrics()
+                Items["OptionHolder"].Instance.Position = UDim2New(0, X, 0, Y)
+                Items["OptionHolder"].Instance.Size = UDim2New(0, Width, Items["OptionHolder"].Instance.Size.Y.Scale, Items["OptionHolder"].Instance.Size.Y.Offset)
+            end
+
             function Dropdown:SetOpen(Bool)
                 if Debounce then 
                     return
@@ -5278,10 +5309,14 @@ local Library do
                 if Dropdown.IsOpen then 
                     Items["OptionHolder"].Instance.Visible = true
                     Items["OptionHolder"].Instance.Parent = Library.Holder.Instance
-                    Items["OptionHolder"].Instance.Size = UDim2New(0, Items["RealDropdown"].Instance.AbsoluteSize.X, 0, 0)
 
-                    Items["OptionHolder"].Instance.Position = UDim2New(0, Items["RealDropdown"].Instance.AbsolutePosition.X, 0, Items["RealDropdown"].Instance.AbsolutePosition.Y + Items["RealDropdown"].Instance.AbsoluteSize.Y + 5)
-                    Items["OptionHolder"]:Tween(nil, {Size = UDim2New(0, Items["RealDropdown"].Instance.AbsoluteSize.X, 0, Dropdown.MaxSize)})
+                    local X, Y, Width = GetDropdownMetrics()
+                    local Scale = (Library.UIScale and Library.UIScale.Instance and Library.UIScale.Instance.Scale) or 1
+                    if Scale <= 0 then Scale = 1 end
+
+                    Items["OptionHolder"].Instance.Size = UDim2New(0, Width, 0, 0)
+                    Items["OptionHolder"].Instance.Position = UDim2New(0, X, 0, Y)
+                    Items["OptionHolder"]:Tween(nil, {Size = UDim2New(0, Width, 0, Dropdown.MaxSize / Scale)})
 
                     for Index, Value in Library.OpenFrames do 
                         if Value ~= Dropdown and not Dropdown.Section.IsSettings then 
@@ -5300,7 +5335,8 @@ local Library do
                         RenderStepped = nil
                     end
 
-                    Items["OptionHolder"]:Tween(nil, {Size = UDim2New(0, Items["RealDropdown"].Instance.AbsoluteSize.X, 0, 0)})
+                    local _, _, Width = GetDropdownMetrics()
+                    Items["OptionHolder"]:Tween(nil, {Size = UDim2New(0, Width, 0, 0)})
                 end
 
                 local Descendants = Items["OptionHolder"].Instance:GetDescendants()
@@ -5571,7 +5607,8 @@ local Library do
             end)
 
             Items["RealDropdown"]:Connect("Changed", function(Property)
-                if Property == "AbsolutePosition" and Dropdown.IsOpen then
+                if (Property == "AbsolutePosition" or Property == "AbsoluteSize") and Dropdown.IsOpen then
+                    UpdateOptionHolderPosition()
                     Dropdown.IsOpen = not Library:IsClipped(Items["OptionHolder"].Instance, Dropdown.Section.Items["Section"].Instance.Parent)
                     Items["OptionHolder"].Instance.Visible = Dropdown.IsOpen
                 end
