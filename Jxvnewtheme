@@ -438,9 +438,18 @@ local Library do
 
                 local ScreenSize = Gui.Parent:IsA("GuiObject") and Gui.Parent.AbsoluteSize or Camera.ViewportSize
                 local GuiSize = Gui.AbsoluteSize
+                local Scale = (Library.UIScale and Library.UIScale.Instance and Library.UIScale.Instance.Scale) or 1
+
+                -- MainFrame.Position is in unscaled coordinates, while AbsoluteSize is scaled.
+                -- Convert the visible size back to UI coordinates so smaller scales can still
+                -- move the window all the way across the screen.
+                local UnscaledWidth = GuiSize.X / Scale
+                local UnscaledHeight = GuiSize.Y / Scale
+                local UnscaledScreenWidth = ScreenSize.X / Scale
+                local UnscaledScreenHeight = ScreenSize.Y / Scale
         
-                NewX = MathClamp(NewX, 0, ScreenSize.X - GuiSize.X)
-                NewY = MathClamp(NewY, 0, ScreenSize.Y - GuiSize.Y)
+                NewX = MathClamp(NewX, 0, math.max(0, UnscaledScreenWidth - UnscaledWidth))
+                NewY = MathClamp(NewY, 0, math.max(0, UnscaledScreenHeight - UnscaledHeight))
 
                 local NewPosition = UDim2New(0, NewX, 0, NewY)
                 self:Tween(TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = NewPosition})
