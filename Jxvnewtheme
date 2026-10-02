@@ -3850,6 +3850,122 @@ local Library do
                         end
                     end
 
+                    -- Smooth bottom-right scale handle.
+                    -- The handle only changes TargetScale; the shared RenderStepped
+                    -- smoother above applies the visual scale, avoiding tween spam.
+                    do
+                        local ScaleHandle = Instances:Create("TextButton", {
+                            Parent = MainFrame,
+                            Name = "ScaleHandle",
+                            AnchorPoint = Vector2New(1, 1),
+                            Position = UDim2New(1, -2, 1, -2),
+                            Size = UDim2New(0, 18, 0, 18),
+                            BackgroundTransparency = 1,
+                            BorderSizePixel = 0,
+                            AutoButtonColor = false,
+                            Text = "",
+                            ZIndex = 100000
+                        })
+
+                        local Pieces = {}
+
+                        local MakePiece = function(Position, Size, Rotation)
+                            local Piece = Instances:Create("Frame", {
+                                Parent = ScaleHandle.Instance,
+                                Name = "\0",
+                                AnchorPoint = Vector2New(0.5, 0.5),
+                                Position = Position,
+                                Size = Size,
+                                Rotation = Rotation,
+                                BorderSizePixel = 0,
+                                BackgroundTransparency = 0.45,
+                                ZIndex = 100001
+                            })
+                            Piece:AddToTheme({BackgroundColor3 = "Text"})
+                            TableInsert(Pieces, Piece)
+                        end
+
+                        -- Clean bottom-right resize arrow.
+                        MakePiece(UDim2New(0, 9, 0, 9), UDim2New(0, 14, 0, 2), 45)
+                        MakePiece(UDim2New(0, 11, 0, 13), UDim2New(0, 8, 0, 2), 0)
+                        MakePiece(UDim2New(0, 14, 0, 11), UDim2New(0, 2, 0, 8), 0)
+
+                        local SetPieces = function(Transparency)
+                            for _, Piece in Pieces do
+                                Piece:Tween(nil, {BackgroundTransparency = Transparency})
+                            end
+                        end
+
+                        ScaleHandle:OnHover(function()
+                            SetPieces(0)
+                        end)
+
+                        ScaleHandle:OnHoverLeave(function()
+                            if not Dragging then
+                                SetPieces(0.45)
+                            end
+                        end)
+
+                        local Scaling = false
+                        local ScaleInputChanged
+                        local StartMouse
+                        local StartScale
+
+                        ScaleHandle:Connect("InputBegan", function(Input)
+                            if Input.UserInputType ~= Enum.UserInputType.MouseButton1 and Input.UserInputType ~= Enum.UserInputType.Touch then
+                                return
+                            end
+
+                            Scaling = true
+                            StartMouse = Vector2New(Input.Position.X, Input.Position.Y)
+                            StartScale = TargetScale
+                            SetPieces(0)
+
+                            if ScaleInputChanged then
+                                ScaleInputChanged:Disconnect()
+                            end
+
+                            ScaleInputChanged = Input.Changed:Connect(function()
+                                if Input.UserInputState == Enum.UserInputState.End then
+                                    Scaling = false
+                                    SetPieces(0.45)
+                                    if ScaleInputChanged then
+                                        ScaleInputChanged:Disconnect()
+                                        ScaleInputChanged = nil
+                                    end
+                                end
+                            end)
+                        end)
+
+                        Library:Connect(UserInputService.InputChanged, function(Input)
+                            if not Scaling then
+                                return
+                            end
+
+                            if Input.UserInputType ~= Enum.UserInputType.MouseMovement and Input.UserInputType ~= Enum.UserInputType.Touch then
+                                return
+                            end
+
+                            local DeltaX = Input.Position.X - StartMouse.X
+                            local DeltaY = Input.Position.Y - StartMouse.Y
+                            local DiagonalDelta = (DeltaX + DeltaY) * 0.5
+
+                            -- About 500 screen pixels = 1.00 scale change.
+                            -- No snapping, so every small mouse movement is represented.
+                            local NewScale = MathClamp(StartScale + (DiagonalDelta / 500), MinScale, MaxScale)
+                            SetScaleTarget(NewScale, true)
+                        end)
+
+                        Library:Connect(UserInputService.InputEnded, function(Input)
+                            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                                Scaling = false
+                                SetPieces(0.45)
+                            end
+                        end)
+
+                        Items["ScaleHandle"] = ScaleHandle
+                    end
+
                     -- Public setter used by Settings and configs.
                     Library.SetUIScale = function(self, NewScale, Smooth)
                         SetScaleTarget(NewScale, Smooth ~= false)
@@ -6025,130 +6141,6 @@ local Library do
                     Window:SetStreamerMode(Value)
                 end
             })
-
-            -- Smooth UI Scale stepper (replaces the slider).
-            -- Uses small 5% steps and the existing eased scale system, so
-            -- changing size stays smooth without slider value skipping.
-            do
-                local ScaleStep = 0.05
-                local ScaleMin = 0.60
-                local ScaleMax = 1.40
-
-                local ScaleRow = Instances:Create("Frame", {
-                    Parent = SettingsSection.Items["Content"].Instance,
-                    Name = "UI Scale Control",
-                    Size = UDim2New(1, 0, 0, 22),
-                    BackgroundTransparency = 1,
-                    BorderSizePixel = 0
-                })
-
-                local Minus = Instances:Create("TextButton", {
-                    Parent = ScaleRow.Instance,
-                    Name = "Minus",
-                    Size = UDim2New(0, 22, 1, 0),
-                    Position = UDim2New(0, 0, 0, 0),
-                    BackgroundColor3 = FromRGB(28, 32, 38),
-                    TextColor3 = FromRGB(220, 220, 220),
-                    FontFace = Library.Font,
-                    Text = "−",
-                    TextSize = 15,
-                    BorderSizePixel = 0,
-                    AutoButtonColor = false
-                })
-                Minus:AddToTheme({BackgroundColor3 = "Element", TextColor3 = "Text"})
-
-                Instances:Create("UICorner", {
-                    Parent = Minus.Instance,
-                    Name = "Corner",
-                    CornerRadius = UDimNew(0, 5)
-                })
-
-                local Value = Instances:Create("TextLabel", {
-                    Parent = ScaleRow.Instance,
-                    Name = "Value",
-                    Size = UDim2New(1, -52, 1, 0),
-                    Position = UDim2New(0, 26, 0, 0),
-                    BackgroundTransparency = 1,
-                    BorderSizePixel = 0,
-                    FontFace = Library.Font,
-                    TextColor3 = FromRGB(170, 170, 170),
-                    TextSize = 13,
-                    Text = "UI Scale: 100%",
-                    TextXAlignment = Enum.TextXAlignment.Center
-                })
-                Value:AddToTheme({TextColor3 = "Text"})
-
-                local Plus = Instances:Create("TextButton", {
-                    Parent = ScaleRow.Instance,
-                    Name = "Plus",
-                    AnchorPoint = Vector2New(1, 0),
-                    Size = UDim2New(0, 22, 1, 0),
-                    Position = UDim2New(1, 0, 0, 0),
-                    BackgroundColor3 = FromRGB(28, 32, 38),
-                    TextColor3 = FromRGB(220, 220, 220),
-                    FontFace = Library.Font,
-                    Text = "+",
-                    TextSize = 15,
-                    BorderSizePixel = 0,
-                    AutoButtonColor = false
-                })
-                Plus:AddToTheme({BackgroundColor3 = "Element", TextColor3 = "Text"})
-
-                Instances:Create("UICorner", {
-                    Parent = Plus.Instance,
-                    Name = "Corner",
-                    CornerRadius = UDimNew(0, 5)
-                })
-
-                local GetScale = function()
-                    local SavedScale = tonumber(Library.Flags["UI Scale"])
-                    if SavedScale then
-                        SavedScale = SavedScale / 100
-                    end
-
-                    return MathClamp(
-                        SavedScale or tonumber((Library.UIScale and Library.UIScale.Instance and Library.UIScale.Instance.Scale) or 1) or 1,
-                        ScaleMin,
-                        ScaleMax
-                    )
-                end
-
-                local UpdateScaleText = function(Scale)
-                    Value.Instance.Text = string.format("UI Scale: %d%%", math.floor((Scale * 100) + 0.5))
-                end
-
-                local ChangeScale = function(Amount)
-                    local Current = GetScale()
-                    local NewScale = MathClamp(Current + Amount, ScaleMin, ScaleMax)
-                    NewScale = math.floor((NewScale / ScaleStep) + 0.5) * ScaleStep
-                    NewScale = MathClamp(NewScale, ScaleMin, ScaleMax)
-
-                    UpdateScaleText(NewScale)
-
-                    if Library.SetUIScale then
-                        Library:SetUIScale(NewScale, true)
-                    end
-                end
-
-                Library:Connect(Minus.Instance.MouseButton1Click, function()
-                    ChangeScale(-ScaleStep)
-                end)
-
-                Library:Connect(Plus.Instance.MouseButton1Click, function()
-                    ChangeScale(ScaleStep)
-                end)
-
-                -- Keep the displayed value synced when a config changes the scale.
-                local PreviousSetScale = Library.SetFlags["UI Scale"]
-                Library.SetFlags["UI Scale"] = function(ScaleValue)
-                    if PreviousSetScale then
-                        PreviousSetScale(ScaleValue)
-                    end
-                    UpdateScaleText(GetScale())
-                end
-
-                UpdateScaleText(GetScale())
-            end
 
             SettingsSection:Slider({
                 Name = "Fade Time",
