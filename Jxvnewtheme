@@ -3737,6 +3737,154 @@ local Library do
                     Items["FloatingButton"].Instance.Position = UDim2New(0, CenterPosition.X, 0, CenterPosition.Y)
                 end
 
+                -- UI scale handle: arrow at the bottom-left, drag it to scale the whole UI
+                do
+                    local MainFrame = Items["MainFrame"].Instance
+                    local MinScale, MaxScale = 0.5, 2
+
+                    local Dragging = false
+                    local InputChanged
+                    local StartMouse, StartScale, StartWidth, StartHeight
+
+                    Items["ScaleHandle"] = Instances:Create("TextButton", {
+                        Parent = MainFrame,
+                        Name = "\0",
+                        AnchorPoint = Vector2New(1, 0),
+                        Position = UDim2New(0, -2, 1, 2),
+                        Size = UDim2New(0, 16, 0, 16),
+                        BackgroundTransparency = 1,
+                        BorderSizePixel = 0,
+                        AutoButtonColor = false,
+                        Text = "",
+                        ZIndex = 100000
+                    })
+
+                    local Pieces = { }
+
+                    local MakePiece = function(Position, Size, Rotation)
+                        local Piece = Instances:Create("Frame", {
+                            Parent = Items["ScaleHandle"].Instance,
+                            Name = "\0",
+                            AnchorPoint = Vector2New(0.5, 0.5),
+                            Position = Position,
+                            Size = Size,
+                            Rotation = Rotation,
+                            BorderSizePixel = 0,
+                            BackgroundTransparency = 0.4,
+                            ZIndex = 100001
+                        })
+                        Piece:AddToTheme({BackgroundColor3 = "Text"})
+
+                        TableInsert(Pieces, Piece)
+                    end
+
+                    -- arrow pointing to the bottom-left
+                    MakePiece(UDim2New(0, 8, 0, 8), UDim2New(0, 13, 0, 2), -45)
+                    MakePiece(UDim2New(0, 6, 0, 13), UDim2New(0, 7, 0, 2), 0)
+                    MakePiece(UDim2New(0, 3, 0, 10), UDim2New(0, 2, 0, 8), 0)
+
+                    local SetPieces = function(Transparency)
+                        for _, Piece in Pieces do
+                            Piece:Tween(nil, {BackgroundTransparency = Transparency})
+                        end
+                    end
+
+                    Items["ScaleHandle"]:OnHover(function()
+                        SetPieces(0)
+                    end)
+
+                    Items["ScaleHandle"]:OnHoverLeave(function()
+                        if not Dragging then
+                            SetPieces(0.4)
+                        end
+                    end)
+
+                    local ApplyScale = function(NewScale)
+                        NewScale = Library:Round(MathClamp(NewScale, MinScale, MaxScale), 0.01)
+
+                        -- snap back to exactly 100% when close
+                        if MathAbs(NewScale - 1) < 0.03 then
+                            NewScale = 1
+                        end
+
+                        local UIScale = Library.UIScale.Instance
+                        local OldScale = UIScale.Scale
+
+                        if NewScale == OldScale then
+                            return
+                        end
+
+                        local Position = MainFrame.Position
+                        local Width, Height = MainFrame.Size.X.Offset, MainFrame.Size.Y.Offset
+                        local Viewport = Camera.ViewportSize
+
+                        -- keep the top right corner in place, the window grows toward the bottom left
+                        local X = (Position.X.Offset + Width) * OldScale / NewScale - Width
+                        local Y = Position.Y.Offset * OldScale / NewScale
+
+                        X = MathClamp(X, 0, math.max(0, Viewport.X / NewScale - Width))
+                        Y = MathClamp(Y, 0, math.max(0, Viewport.Y / NewScale - Height))
+
+                        UIScale.Scale = NewScale
+                        MainFrame.Position = UDim2New(0, X, 0, Y)
+                        Library.Flags["UI Scale"] = NewScale
+                    end
+
+                    Items["ScaleHandle"]:Connect("InputBegan", function(Input)
+                        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                            Dragging = true
+
+                            StartMouse = Vector2New(Input.Position.X, Input.Position.Y)
+                            StartScale = Library.UIScale.Instance.Scale
+                            StartWidth = MainFrame.Size.X.Offset * StartScale
+                            StartHeight = MainFrame.Size.Y.Offset * StartScale
+
+                            SetPieces(0)
+
+                            if InputChanged then
+                                return
+                            end
+
+                            InputChanged = Input.Changed:Connect(function()
+                                if Input.UserInputState == Enum.UserInputState.End then
+                                    Dragging = false
+                                    SetPieces(0.4)
+
+                                    InputChanged:Disconnect()
+                                    InputChanged = nil
+                                end
+                            end)
+                        end
+                    end)
+
+                    Library:Connect(UserInputService.InputChanged, function(Input)
+                        if not Dragging then
+                            return
+                        end
+
+                        if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
+                            local DeltaX = Input.Position.X - StartMouse.X
+                            local DeltaY = Input.Position.Y - StartMouse.Y
+
+                            -- dragging toward the bottom-left grows it, toward the top-right shrinks it
+                            local Factor = 1 + ((-DeltaX * StartWidth) + (DeltaY * StartHeight)) / (StartWidth * StartWidth + StartHeight * StartHeight)
+
+                            ApplyScale(StartScale * Factor)
+                        end
+                    end)
+
+                    -- keeps the scale in configs (also reads old "100%" style values)
+                    Library.SetFlags["UI Scale"] = function(Value)
+                        if type(Value) == "string" then
+                            Value = (tonumber(Value:match("[%d%.]+")) or 100) / 100
+                        end
+
+                        ApplyScale(tonumber(Value) or 1)
+                    end
+
+                    Library.Flags["UI Scale"] = Library.UIScale.Instance.Scale
+                end
+
                 Window.Items = Items
             end
 
@@ -3767,7 +3915,7 @@ local Library do
             end
 
             function Window:SetOpen(Bool)
-                if Debounce then 
+                if Debounce then
                     return
                 end
 
@@ -5890,45 +6038,6 @@ local Library do
                 Default = false,
                 Callback = function(Value)
                     Window:SetStreamerMode(Value)
-                end
-            })
-
-            local ScaleOptions = {"50%", "75%", "100%", "125%", "150%", "175%", "200%"}
-            local ScaleValues = {
-                ["50%"] = 0.5,
-                ["75%"] = 0.75,
-                ["100%"] = 1,
-                ["125%"] = 1.25,
-                ["150%"] = 1.5,
-                ["175%"] = 1.75,
-                ["200%"] = 2
-            }
-
-            SettingsSection:Dropdown({
-                Name = "DPI Scale",
-                Flag = "UI Scale",
-                Items = ScaleOptions,
-                Default = "100%",
-                MaxSize = 204,
-                Callback = function(Value)
-                    local Scale = ScaleValues[Value]
-                    if Library.UIScale and Scale then
-                        Library.UIScale.Instance.Scale = Scale
-
-                        task.defer(function()
-                            RunService.RenderStepped:Wait()
-
-                            local MainFrame = Window.Items["MainFrame"].Instance
-                            local ViewportSize = Camera.ViewportSize
-                            local FrameSize = MainFrame.AbsoluteSize
-
-                            MainFrame.AnchorPoint = Vector2New(0, 0)
-                            MainFrame.Position = UDim2New(
-                                0, MathFloor((ViewportSize.X - FrameSize.X) * 0.5),
-                                0, MathFloor((ViewportSize.Y - FrameSize.Y) * 0.5)
-                            )
-                        end)
-                    end
                 end
             })
 
