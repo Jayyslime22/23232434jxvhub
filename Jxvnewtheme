@@ -5372,9 +5372,20 @@ local Library do
 
                     task.wait(0.1)
                     if Dropdown.IsOpen then 
+                        -- Keep the floating dropdown in the same coordinate space as the
+                        -- scaled Holder. Do not assign screen-space AbsolutePosition values
+                        -- directly here, or UIScale will introduce a growing gap/offset.
                         RenderStepped = RunService.RenderStepped:Connect(function()
-                            Items["OptionHolder"].Instance.Position = UDim2New(0, Items["RealDropdown"].Instance.AbsolutePosition.X, 0, Items["RealDropdown"].Instance.AbsolutePosition.Y + Items["RealDropdown"].Instance.AbsoluteSize.Y + 5)
-                            Items["OptionHolder"].Instance.Size = UDim2New(0, Items["RealDropdown"].Instance.AbsoluteSize.X, 0, Dropdown.MaxSize)
+                            UpdateOptionHolderPosition()
+
+                            local Scale = (Library.UIScale and Library.UIScale.Instance and Library.UIScale.Instance.Scale) or 1
+                            if Scale <= 0 then
+                                Scale = 1
+                            end
+
+                            local Holder = Items["OptionHolder"].Instance
+                            local Width = Holder.Size.X.Offset
+                            Holder.Size = UDim2New(0, Width, 0, Dropdown.MaxSize / Scale)
                         end)
                     else
                         if RenderStepped then 
@@ -5382,7 +5393,8 @@ local Library do
                             RenderStepped = nil
                         end
 
-                        Items["OptionHolder"]:Tween(nil, {Size = UDim2New(0, Items["RealDropdown"].Instance.AbsoluteSize.X, 0, 0)})
+                        local _, _, Width = GetDropdownMetrics()
+                        Items["OptionHolder"]:Tween(nil, {Size = UDim2New(0, Width, 0, 0)})
                     end
                 end)
             end
