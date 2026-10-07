@@ -6206,6 +6206,62 @@ local Library do
             
             local TeleportService = game:GetService("TeleportService")
             local HttpService = game:GetService("HttpService")
+            local function requestAPI(url)
+                local ok, res = pcall(function() return game:HttpGet(url) end)
+                if ok and res and res ~= "" then return res end
+                return nil
+            end
+            local function getServers(sortOrder, maxPages)
+                local proxies = {
+                    "games.roblox.com",
+                    "games.roproxy.com",
+                    "games.proxy.rblx.trade"
+                }
+                sortOrder = sortOrder or "Desc"
+                maxPages = maxPages or 1
+                for _, proxy in ipairs(proxies) do
+                    local allServers = {}
+                    local cursor = ""
+                    local pageCount = 0
+                    local failed = false
+                    while pageCount < maxPages do
+                        pageCount = pageCount + 1
+                        local cursorParam = (cursor ~= "") and ("&cursor=" .. cursor) or ""
+                        local url = "https://" .. proxy .. "/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=" .. sortOrder .. "&limit=100&excludeFullGames=true" .. cursorParam
+                        local body = requestAPI(url)
+                        if body then
+                            local success, data = pcall(function() return HttpService:JSONDecode(body) end)
+                            if success and data and data.data then
+                                for _, s in ipairs(data.data) do
+                                    table.insert(allServers, s)
+                                end
+                                if data.nextPageCursor and type(data.nextPageCursor) == "string" and data.nextPageCursor ~= "" then
+                                    cursor = data.nextPageCursor
+                                else
+                                    break
+                                end
+                            else
+                                failed = true
+                                break
+                            end
+                        else
+                            failed = true
+                            break
+                        end
+                    end
+                    if not failed and #allServers > 0 then
+                        return allServers
+                    end
+                end
+                return nil
+            end
+            local function NotifyCompat(text, time)
+                pcall(function()
+                    if Library.Notifications and Library.Notifications.Create then
+                        Library.Notifications:Create({Name = text, LifeTime = time or 3})
+                    end
+                end)
+            end
             ServerSection:Button({Name = "Rejoin Server",Callback = function()
                 TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,game.Players.LocalPlayer)
             end})
@@ -6238,6 +6294,54 @@ local Library do
                     TeleportService:TeleportToPlaceInstance(game.PlaceId,LowestServer.id,game.Players.LocalPlayer)
                 end
             end})
+
+            ServerSection:Button({
+                Name = "Join Lowest Ping Server",
+                Callback = function()
+                    task.spawn(function()
+                        NotifyCompat("Scanning for lowest ping server (best region)...", 4)
+                        local servers = getServers("Desc", 3)
+                        local bestServer = nil
+                        local lowestPing = math.huge
+
+                        if servers then
+                            for _, s in ipairs(servers) do
+                                if s.id ~= game.JobId and type(s.playing) == "number" and s.playing > 0 and s.playing < s.maxPlayers then
+                                    local ping = tonumber(s.ping)
+                                    if ping and ping > 0 then
+                                        if ping < lowestPing then
+                                            lowestPing = ping
+                                            bestServer = s
+                                        end
+                                    end
+                                end
+                            end
+
+                            if not bestServer then
+                                local highestFps = 0
+                                for _, s in ipairs(servers) do
+                                    if s.id ~= game.JobId and type(s.playing) == "number" and s.playing > 0 and s.playing < s.maxPlayers then
+                                        local fps = tonumber(s.fps) or 60
+                                        if fps > highestFps then
+                                            highestFps = fps
+                                            bestServer = s
+                                        end
+                                    end
+                                end
+                            end
+                        end
+
+                        if bestServer then
+                            local pingInfo = (lowestPing ~= math.huge) and (tostring(math.floor(lowestPing)) .. "ms ping") or "optimal connection"
+                            NotifyCompat("Found server: " .. pingInfo .. " (" .. tostring(bestServer.playing) .. "/" .. tostring(bestServer.maxPlayers) .. " plrs). Teleporting...", 4)
+                            task.wait(0.5)
+                            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, bestServer.id, game:GetService("Players").LocalPlayer)
+                        else
+                            NotifyCompat("Failed to find lowest ping server!", 3)
+                        end
+                    end)
+                end
+            })
         end
     end
 end
