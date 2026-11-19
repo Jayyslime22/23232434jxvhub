@@ -6177,23 +6177,100 @@ local Library do
                 end
             })
 
-            -- Optional Christmas colors; disabling restores the exact original theme.
+            -- Christmas theme: evergreen surfaces, warm holiday accents, and optional snowfall.
             local OriginalTheme = TableClone(Library.Theme)
             local ChristmasTheme = {
-                Background = FromRGB(10, 16, 13),
-                Inline = FromRGB(17, 39, 29),
-                Outline = FromRGB(174, 45, 54),
-                Text = FromRGB(244, 239, 220),
-                ["Dark Text"] = FromRGB(184, 190, 177),
-                Element = FromRGB(105, 25, 37),
-                Accent = FromRGB(194, 48, 58)
+                Background = FromRGB(9, 18, 16),
+                Inline = FromRGB(17, 39, 32),
+                Outline = FromRGB(177, 143, 86),
+                Text = FromRGB(247, 244, 235),
+                ["Dark Text"] = FromRGB(174, 190, 181),
+                Element = FromRGB(28, 57, 46),
+                Accent = FromRGB(194, 69, 79)
             }
+
+            -- A transparent, non-interactive layer keeps the snow behind every UI control.
+            local SnowLayer = InstanceNew("Frame")
+            SnowLayer.Name = "ChristmasSnowLayer"
+            SnowLayer.BackgroundTransparency = 1
+            SnowLayer.BorderSizePixel = 0
+            SnowLayer.Size = UDim2New(1, 0, 1, 0)
+            SnowLayer.Position = UDim2New(0, 0, 0, 0)
+            SnowLayer.Visible = false
+            SnowLayer.Active = false
+            SnowLayer.Selectable = false
+            SnowLayer.ZIndex = 0
+            SnowLayer.Parent = Library.Holder.Instance
+
+            local Snowflakes = {}
+            local Random = math.random
+            local ViewportSize = Camera.ViewportSize
+
+            for Index = 1, 38 do
+                local Flake = InstanceNew("TextLabel")
+                local SmallFlake = Index % 3 == 0
+                local FlakeSize = SmallFlake and Random(8, 13) or Random(13, 21)
+                Flake.Name = "Snowflake"
+                Flake.BackgroundTransparency = 1
+                Flake.BorderSizePixel = 0
+                Flake.Size = UDim2FromOffset(FlakeSize + 8, FlakeSize + 8)
+                Flake.Position = UDim2New(Random(), 0, Random(), 0)
+                Flake.Font = Enum.Font.Gotham
+                Flake.Text = SmallFlake and "·" or "❄"
+                Flake.TextSize = FlakeSize
+                Flake.TextColor3 = SmallFlake and FromRGB(194, 218, 211) or FromRGB(245, 249, 247)
+                Flake.TextTransparency = Random(12, 38) / 100
+                Flake.TextStrokeTransparency = 0.85
+                Flake.TextStrokeColor3 = FromRGB(115, 153, 143)
+                Flake.Rotation = Random(-25, 25)
+                Flake.ZIndex = 0
+                Flake.Parent = SnowLayer
+
+                Snowflakes[Index] = {
+                    Object = Flake,
+                    X = Random(),
+                    Y = Random(),
+                    Speed = Random(18, 48),
+                    Drift = Random(-12, 12),
+                    Sway = Random(5, 16),
+                    Phase = Random() * math.pi * 2,
+                    RotationSpeed = Random(-18, 18)
+                }
+            end
+
+            local SnowTime = 0
+            Library:Connect(RunService.RenderStepped, function(DeltaTime)
+                if not SnowLayer.Parent or not SnowLayer.Visible then
+                    return
+                end
+
+                SnowTime = SnowTime + DeltaTime
+                ViewportSize = Camera.ViewportSize
+
+                for _, FlakeData in Snowflakes do
+                    local Flake = FlakeData.Object
+                    FlakeData.Y = FlakeData.Y + (FlakeData.Speed * DeltaTime) / math.max(ViewportSize.Y, 1)
+                    FlakeData.X = FlakeData.X + (FlakeData.Drift * DeltaTime) / math.max(ViewportSize.X, 1)
+                        + (math.sin(SnowTime * 0.8 + FlakeData.Phase) * FlakeData.Sway * DeltaTime) / math.max(ViewportSize.X, 1)
+
+                    if FlakeData.Y > 1.04 then
+                        FlakeData.Y = -0.05
+                        FlakeData.X = Random()
+                    end
+                    if FlakeData.X > 1.04 then FlakeData.X = -0.04 end
+                    if FlakeData.X < -0.04 then FlakeData.X = 1.04 end
+
+                    Flake.Position = UDim2New(FlakeData.X, 0, FlakeData.Y, 0)
+                    Flake.Rotation = (Flake.Rotation + FlakeData.RotationSpeed * DeltaTime) % 360
+                end
+            end, "ChristmasSnowAnimation")
 
             SettingsSection:Toggle({
                 Name = "Christmas Theme",
                 Flag = "Christmas Theme",
                 Default = false,
                 Callback = function(Value)
+                    SnowLayer.Visible = Value
                     local ThemeToApply = Value and ChristmasTheme or OriginalTheme
                     for ThemeName, ThemeColor in ThemeToApply do
                         Library:ChangeTheme(ThemeName, ThemeColor)
