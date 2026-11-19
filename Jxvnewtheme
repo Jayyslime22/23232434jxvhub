@@ -6268,7 +6268,7 @@ local Library do
             SettingsSection:Toggle({
                 Name = "Christmas Theme",
                 Flag = "Christmas Theme",
-                Default = false,
+                Default = true,
                 Callback = function(Value)
                     SnowLayer.Visible = Value
                     local ThemeToApply = Value and ChristmasTheme or OriginalTheme
