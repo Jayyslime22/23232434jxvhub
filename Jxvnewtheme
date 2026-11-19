@@ -6177,6 +6177,30 @@ local Library do
                 end
             })
 
+            -- Optional Christmas colors; disabling restores the exact original theme.
+            local OriginalTheme = TableClone(Library.Theme)
+            local ChristmasTheme = {
+                Background = FromRGB(10, 16, 13),
+                Inline = FromRGB(17, 39, 29),
+                Outline = FromRGB(174, 45, 54),
+                Text = FromRGB(244, 239, 220),
+                ["Dark Text"] = FromRGB(184, 190, 177),
+                Element = FromRGB(105, 25, 37),
+                Accent = FromRGB(194, 48, 58)
+            }
+
+            SettingsSection:Toggle({
+                Name = "Christmas Theme",
+                Flag = "Christmas Theme",
+                Default = false,
+                Callback = function(Value)
+                    local ThemeToApply = Value and ChristmasTheme or OriginalTheme
+                    for ThemeName, ThemeColor in ThemeToApply do
+                        Library:ChangeTheme(ThemeName, ThemeColor)
+                    end
+                end
+            })
+
             SettingsSection:Slider({
                 Name = "Fade Time",
                 Default = Library.FadeSpeed,
